@@ -1,3 +1,7 @@
+
+// NOTE: Supabase Auth base endpoint (/auth/v1) will return 404. Only subpaths like /auth/v1/signup, /auth/v1/token, etc. are valid endpoints.
+// See: https://supabase.com/docs/reference/auth
+
 import { Request, Response } from "express";
 import { AuthService } from "../../services/authService";
 
