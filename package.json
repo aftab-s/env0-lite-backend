@@ -1,7 +1,7 @@
 {
   "name": "env0",
   "version": "1.0.0",
-  "main": "dist/app.js",
+  "main": "src/app.ts",
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
@@ -10,7 +10,7 @@
     "format": "prettier --write ."
   },
   "keywords": [],
-  "author": "",
+  "author": "Sangeth Promod",
   "license": "ISC",
   "description": "",
   "dependencies": {
