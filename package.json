@@ -1,7 +1,7 @@
 {
   "name": "env0",
   "version": "1.0.0",
-  "main": "src/app.ts",
+  "main": "dist/app.js",
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
