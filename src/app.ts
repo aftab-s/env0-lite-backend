@@ -47,8 +47,19 @@ app.use(express.json());
 app.use(cookieParser(COOKIE_SECRET));
 
 
-// Swagger UI route
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Serve Swagger JSON explicitly for production compatibility
+app.get("/api-docs/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+
+// Swagger UI route with explicit swaggerUrl
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(undefined, { swaggerUrl: "/api-docs/swagger.json" })
+);
 
 // Register routes
 // app.use("/api/users", userRoutes);
