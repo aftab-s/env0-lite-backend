@@ -34,7 +34,7 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Routes
-// import userRoutes from "./routes/user.routes";
+import userRoutes from "./routes/userRoutes";
 import authRoutes from "./routes/authRoutes";
 import githubRoutes from "./routes/githubRoutes";
 
@@ -62,7 +62,7 @@ app.use(
 );
 
 // Register routes
-// app.use("/api/users", userRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/github", githubRoutes);
 

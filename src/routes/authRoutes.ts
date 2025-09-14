@@ -5,8 +5,8 @@ const AuthController = require("../controllers/auth/authController");
 /**
  * @swagger
  * tags:
- *   name: Auth
- *   description: Authentication endpoints
+ *   name: Github Integrated Auth
+ *   description: Authentication endpoints that use Github OAuth (beta testing)
  */
 
 const router = Router();
@@ -16,7 +16,7 @@ const router = Router();
  * /api/auth/signup:
  *   post:
  *     summary: Register a new user
- *     tags: [Auth]
+ *     tags: [Github Integrated Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -45,7 +45,7 @@ router.post("/signup", AuthController.signUp);
  * /api/auth/signin:
  *   post:
  *     summary: Sign in a user
- *     tags: [Auth]
+ *     tags: [Github Integrated Auth]
  *     requestBody:
  *       required: true
  *       content:
@@ -72,7 +72,7 @@ router.post("/signin", AuthController.signIn);
  * /api/auth/session/accept:
  *   post:
  *     summary: Accept a session token and return user
- *     tags: [Auth]
+ *     tags: [Github Integrated Auth]
  *     requestBody:
  *       required: true
  *       content:
