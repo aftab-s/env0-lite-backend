@@ -1,34 +1,16 @@
-import { Request, Response } from "express";
-import { GithubService } from "../../services/githubService";
+import { fetchRepoContents } from '../../repositories/github.repository';
+import { Request, Response } from 'express';
 
-const GithubController = {
-  async listRepos(req: Request, res: Response) {
-    const token = req.headers.authorization?.split(" ")[1] || req.body.provider_token;
-    if (!token) return res.status(400).json({ error: "GitHub token required" });
-
-    try {
-      const repos = await GithubService.listRepos(token);
-      res.json(repos.data);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  },
-
-  async getFile(req: Request, res: Response) {
-    const token = req.headers.authorization?.split(" ")[1] || req.body.provider_token;
-    const { owner, repo, path } = req.body;
-
-    if (!token || !owner || !repo || !path) {
-      return res.status(400).json({ error: "Missing parameters" });
-    }
-
-    try {
-      const file = await GithubService.getFile(owner, repo, path, token);
-      res.json(file.data);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  },
+export const getRepoContents = async (req: Request, res: Response) => {
+  const { owner, repo } = req.params;
+  const path = req.query.path as string || '';
+  const token = req.headers['github-token'] as string | undefined;
+  try {
+    const contents = await fetchRepoContents(owner, repo, path, token);
+    res.json(contents);
+  } catch (err: any) {
+    const status = err.response?.status || 500;
+    const message = err.response?.data?.message || 'Failed to fetch repo contents';
+    res.status(status).json({ error: message });
+  }
 };
-
-module.exports = GithubController;
