@@ -1,4 +1,3 @@
-
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -6,37 +5,18 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/dbConnection";
 
-import swaggerUi from "swagger-ui-express";
-import swaggerJsdoc from "swagger-jsdoc";
+import { setupSwagger } from "./config/swagger";
 
 const PORT = process.env.PORT || 5000;
 
-// Swagger setup
-const swaggerOptions = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "Env0 Lite Backend API",
-      version: "1.0.0",
-      description: "API documentation for env0-lite-backend",
-    },
-    servers: [
-      {
-  url: `http://localhost:${PORT}`,
-      },
-    ],
-  },
-  apis: [
-    "./src/routes/*.ts",
-    "./src/controllers/**/*.ts",
-  ],
-};
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Swagger setup (moved to config/swagger.ts)
+
 
 // Routes
 import userRoutes from "./routes/userRoutes";
 import authRoutes from "./routes/authRoutes";
-import githubRoutes from "./routes/githubRoutes";
+import githubPatRoutes from "./routes/githubPatRoutes";
 
 const MONGO_URI = process.env.MONGO_URI;
 const COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET || "dev-secret";
@@ -46,25 +26,16 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser(COOKIE_SECRET));
 
+// Setup Swagger after app is initialized
+setupSwagger(app);
 
 
-// Serve Swagger JSON explicitly for production compatibility
-app.get("/api-docs/swagger.json", (req, res) => {
-  res.setHeader("Content-Type", "application/json");
-  res.send(swaggerSpec);
-});
-
-// Swagger UI route with explicit swaggerUrl
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(undefined, { swaggerUrl: "/api-docs/swagger.json" })
-);
 
 // Register routes
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/github", githubRoutes);
+app.use("/api/github-pat", githubPatRoutes);
+
 
 // Connect to MongoDB and start server
 
