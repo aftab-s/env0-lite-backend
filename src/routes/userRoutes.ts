@@ -16,6 +16,9 @@ router.get('/users', verifyToken, ManualAuthController.getAllUsers);
 // Get user by ID (protected)
 router.get('/users/:id', verifyToken, ManualAuthController.getUserById);
 
+// Get user by Email (protected)
+router.post('/users/email', verifyToken, ManualAuthController.getUserByEmail);
+
 // Update user by ID (protected)
 router.put('/users/:id', verifyToken, ManualAuthController.updateUser);
 

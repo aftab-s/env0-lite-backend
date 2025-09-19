@@ -70,6 +70,21 @@ const ManualAuthController = {
     });
   },
 
+  async getUserByEmail(req: Request, res: Response) {
+    const { email } = req.body;
+    const user = await findByEmail(email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({
+      userId: user.userId,
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+  },
+
 
 
   async updateUser(req: Request, res: Response) {

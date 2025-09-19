@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-
+import cors from "cors";
 import express from "express";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/dbConnection";
@@ -8,10 +8,6 @@ import connectDB from "./config/dbConnection";
 import { setupSwagger } from "./config/swagger";
 
 const PORT = process.env.PORT || 5000;
-
-
-// Swagger setup (moved to config/swagger.ts)
-
 
 // Routes
 import userRoutes from "./routes/userRoutes";
@@ -25,20 +21,27 @@ const COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET || "dev-secret";
 const app = express();
 app.use(express.json());
 app.use(cookieParser(COOKIE_SECRET));
+app.use(
+  cors({
+    origin: "http://localhost:3000", // Next.js frontend
+    credentials: true,
+  })
+);
+
+// Root route
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
 
 // Setup Swagger after app is initialized
 setupSwagger(app);
-
-
 
 // Register routes
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/github-pat", githubPatRoutes);
 
-
 // Connect to MongoDB and start server
-
 const startServer = async () => {
   if (!MONGO_URI) {
     throw new Error("MONGO_URI environment variable is not defined");
