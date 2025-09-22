@@ -83,3 +83,23 @@ export const fetchRepoTree = async (
 
   return buildTree(flatNodes);
 };
+
+export const getBranches = async (
+    owner: string,
+    repo: string,
+    accessToken: string
+  ) => {
+    try {
+      const octokit = new Octokit({ auth: accessToken });
+
+      const { data } = await octokit.rest.repos.listBranches({
+        owner,
+        repo,
+      });
+
+      return data;
+    } catch (err: any) {
+      console.error("Error fetching branches:", err.message);
+      throw new Error("Failed to fetch branches from GitHub");
+    }
+  };
