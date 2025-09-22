@@ -1,6 +1,7 @@
+
 import { Router } from "express";
 import ManualAuthController from '../controllers/auth/manualAuthController';
-import { verifyToken } from '../middleware/tokenManagement';
+import { authenticateToken } from '../middleware/tokenManagement';
 
 const router = Router();
 
@@ -10,22 +11,23 @@ router.post('/signup', ManualAuthController.signup);
 // Login a user and return JWT
 router.post('/login', ManualAuthController.login);
 
+
 // Get all users (protected)
-router.get('/users', verifyToken, ManualAuthController.getAllUsers);
+router.get('/users', authenticateToken, ManualAuthController.getAllUsers);
 
 // Get user by ID (protected)
-router.get('/users/:id', verifyToken, ManualAuthController.getUserById);
+router.get('/users/:id', authenticateToken, ManualAuthController.getUserById);
 
 // Get user by Email (protected)
-router.post('/users/email', ManualAuthController.getUserByEmail);
+router.post('/users/email', authenticateToken, ManualAuthController.getUserByEmail);
 
 // Update user by ID (protected)
-router.put('/users/:id', verifyToken, ManualAuthController.updateUser);
+router.put('/users/:id', authenticateToken, ManualAuthController.updateUser);
 
 // Soft delete user by ID (protected)
-router.delete('/users/:id/soft', verifyToken, ManualAuthController.softDeleteUser);
+router.delete('/users/:id/soft', authenticateToken, ManualAuthController.softDeleteUser);
 
 // Hard delete user by ID (protected)
-router.delete('/users/:id/hard', verifyToken, ManualAuthController.hardDeleteUser);
+router.delete('/users/:id/hard', authenticateToken, ManualAuthController.hardDeleteUser);
 
 export default router;

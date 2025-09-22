@@ -14,6 +14,7 @@ import userRoutes from "./routes/userRoutes";
 import authRoutes from "./routes/authRoutes";
 import githubPatRoutes from "./routes/githubPatRoutes";
 import dockerRoutes from "./routes/dockerRoutes";
+import projectRoutes from "./routes/projectRoutes"
 
 const MONGO_URI = process.env.MONGO_URI;
 const COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET || "dev-secret";
@@ -42,6 +43,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/github-pat", githubPatRoutes);
 app.use("/api/docker", dockerRoutes);
+app.use("/api/pj-route", projectRoutes);
 
 // Connect to MongoDB and start server
 const startServer = async () => {

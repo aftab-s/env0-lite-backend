@@ -38,7 +38,8 @@ const ManualAuthController = {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = generateToken({ userId: user.userId, role: user.role });
+    // Include userId, username, name in token
+    const token = generateToken({ userId: user.userId, username: user.username, name: user.name, role: user.role });
     res.json({ token });
   },
 
