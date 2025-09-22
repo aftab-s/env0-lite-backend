@@ -1,4 +1,4 @@
-// controllers/github/githubPatController.ts
+'use client'
 import { Request, Response } from "express";
 import { Buffer } from 'buffer';
 import { upsertUserPAT, getUserPAT } from "../../repositories/userPAT.repository";
@@ -6,6 +6,7 @@ import {
   fetchUserRepos,
   fetchRepoContents,
   fetchRepoTree,
+  getBranches,
 } from "../../services/githubPatService";
 
 export const savePAT = async (req: Request, res: Response) => {
@@ -26,14 +27,15 @@ export const savePAT = async (req: Request, res: Response) => {
 };
 
 export const getRepos = async (req: Request, res: Response) => {
-  const { email } = req.params;
+  const { email,pat } = req.params;
+  
   try {
-    const userPat = await getUserPAT(email);
-    if (!userPat) {
-      return res.status(404).json({ error: "PAT not found for user" });
-    }
+    // const userPat = await getUserPAT(email);
+    // if (!userPat) {
+    //   return res.status(404).json({ error: "PAT not found for user" });
+    // }
 
-    const repos = await fetchUserRepos(userPat.pat);
+    const repos = await fetchUserRepos(pat);
 
     // Extract repo name and owner
     const repoList = repos.map((repo: any) => ({
@@ -113,15 +115,15 @@ export const getRepoContents = async (req: Request, res: Response) => {
 };
 
 export const getRepoTree = async (req: Request, res: Response) => {
-  const { email, owner, repo } = req.params;
+  const {owner, repo, pat } = req.params;
   const branch = (req.query.ref as string) || "main";
 
   try {
-    const userPat = await getUserPAT(email);
-    if (!userPat)
-      return res.status(404).json({ error: "PAT not found for user" });
+    // const userPat = await getUserPAT(email);
+    // if (!userPat)
+    //   return res.status(404).json({ error: "PAT not found for user" });
 
-    const tree = await fetchRepoTree(userPat.pat, owner, repo, branch);
+    const tree = await fetchRepoTree(pat, owner, repo, branch);
     res.json(tree);
   } catch (err: any) {
     console.error("Error fetching repo tree:", err.message);
@@ -164,3 +166,18 @@ export const getFileContent = async (req: Request, res: Response) => {
   }
 };
 
+
+export async function getRepoBranches(req: Request, res: Response) {
+  try {
+    const { owner, repo, pat } = req.body;
+
+    if (!pat) {
+      return res.status(401).json({ error: "Missing GitHub access token" });
+    }
+
+    const branches = await getBranches(owner, repo, pat);
+    res.json(branches);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
