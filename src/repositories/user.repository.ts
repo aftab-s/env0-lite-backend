@@ -1,4 +1,4 @@
-import UserModel, { UserDocument } from '../models/user.model';
+import UserModel, { UserDocument } from '../models/user.schemal';
 
 export const createUser = async (data: Partial<UserDocument>) => {
   // Always set status to 'ACTIVE' on creation

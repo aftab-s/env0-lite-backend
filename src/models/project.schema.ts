@@ -3,10 +3,14 @@ import { v4 as uuidv4 } from "uuid";
 
 export interface IProject extends Document {
   projectId: string;
-  name: string;
-  ownerId: string; // user who created project
-  repoUrl?: string; // optional GitHub repo URL
+  projectName: string;
+  projectDescription?: string;
+  ownerId?: string;
+  ownerName?: string;
+  repoUrl?: string;
   branch?: string;
+  csp?: "aws" | "gcp" | "azure";
+  status: "idle" | "running" | "error";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,20 +23,31 @@ const ProjectSchema: Schema = new Schema(
       unique: true,
       required: true,
     },
-    name: {
+    projectName: {
       type: String,
       required: true,
     },
-    ownerId: {
+    projectDescription: {
       type: String,
       required: true,
+    },
+    ownerName: {
+      type: String,
     },
     repoUrl: {
       type: String,
     },
     branch: {
       type: String,
-      default: "main",
+    },
+    csp: {
+      type: String,
+      enum: ["aws", "gcp", "azure"],
+    },
+    status: {
+      type: String,
+      enum: ["idle", "running", "error"],
+      default: "idle",
     },
   },
   { timestamps: true }
