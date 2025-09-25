@@ -1,6 +1,9 @@
 import { NextFunction, Router } from "express";
 import * as ProjectController from "../controllers/github/projectController";
 import * as ContainerInjector from "../controllers/Docker/repoClonnerController"
+import { configureAwsProfile, deleteAwsProfile } from "../controllers/Docker/keyInjector";
+import { resetRepoAndSyncSpaces } from "../controllers/Docker/pullInjector";
+import { terraformInitPlan, terraformApply } from "../controllers/Docker/terraformInjector";
 import { authenticateToken } from "../middleware/tokenManagement";
 
 const router = Router();
@@ -28,5 +31,35 @@ router.post(
   authenticateToken,
   ContainerInjector.cloneRepoAndCreateSpaces
 );
+
+// Route: Configure AWS profile in Docker container
+router.put(
+  "/:projectId/configure-aws-profile",
+  authenticateToken,
+  configureAwsProfile
+);
+router.delete(
+  "/:projectId/delete-aws-profile",
+  authenticateToken,
+  deleteAwsProfile
+);
+
+// --- NEW Terraform Routes ---
+// Run terraform init && terraform plan
+router.post(
+  "/:projectId/terraform/plan",
+  authenticateToken,
+  terraformInitPlan
+);
+
+// Run terraform apply --auto-approve
+router.post(
+  "/:projectId/terraform/apply",
+  authenticateToken,
+  terraformApply
+);
+
+
+router.put("/:projectId/reset-branch",authenticateToken, resetRepoAndSyncSpaces);
 
 export default router;

@@ -1,0 +1,92 @@
+import { Request, Response } from "express";
+import { spawn } from "child_process";
+import { v4 as uuidv4 } from "uuid";
+import Project from "../../models/project.schema";
+
+/**
+ * PUT /projects/:projectId/reset
+ * Hard resets the repo to remote main branch inside container
+ * Syncs spaces with current root-level folders
+ */
+export const resetRepoAndSyncSpaces = async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findOne({ projectId });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    if (!project.repoUrl || !project.projectName) {
+      return res.status(400).json({ error: "repoUrl or projectName missing" });
+    }
+
+    const containerId = process.env.CONTAINERID;
+    if (!containerId) {
+      return res.status(500).json({ error: "CONTAINERID not set" });
+    }
+
+    const workspacePath = `/workspace/${project.projectName}`;
+
+    const runCmd = (cmd: string) =>
+      new Promise<string>((resolve, reject) => {
+        const proc = spawn("docker", ["exec", containerId, "sh", "-c", cmd]);
+        let out = "";
+        let err = "";
+        proc.stdout.on("data", (d) => (out += d.toString()));
+        proc.stderr.on("data", (d) => (err += d.toString()));
+        proc.on("close", (code) => {
+          if (code === 0) resolve(out);
+          else reject(new Error(err || `Command failed with code ${code}`));
+        });
+      });
+
+    // Step 1: Hard reset repo
+    await runCmd(
+      `cd ${workspacePath} && git fetch origin main && git reset --hard origin/main && git clean -fd`
+    );
+
+    // Step 2: List root-level folders
+    const folderOutput = await runCmd(
+      `cd ${workspacePath} && ls -d */ || true`
+    );
+
+    const folderNames = folderOutput
+      .split("\n")
+      .map((f) => f.replace("/", "").trim())
+      .filter((f) => f.length > 0);
+
+    // Step 3: Sync spaces
+    const existingSpaces = project.spaces || [];
+
+    // keep spaces that still exist
+    const keptSpaces = existingSpaces.filter((s) =>
+      folderNames.includes(s.spaceName)
+    );
+
+    // add new spaces
+    const newSpaces = folderNames
+      .filter((f) => !keptSpaces.find((s) => s.spaceName === f))
+      .map((folder) => ({
+        spaceId: uuidv4(),
+        spaceName: folder,
+        spaceDescription: "",
+      }));
+
+    project.spaces = [...keptSpaces, ...newSpaces];
+    await project.save();
+
+    res.json({
+      success: true,
+      message: `Repo reset to origin/main and spaces synced`,
+      spaces: project.spaces,
+      added: newSpaces.map((s) => s.spaceName),
+      removed: existingSpaces
+        .filter((s) => !folderNames.includes(s.spaceName))
+        .map((s) => s.spaceName),
+    });
+  } catch (err: any) {
+    console.error("Repo reset error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

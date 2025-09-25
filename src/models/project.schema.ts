@@ -10,6 +10,7 @@ export interface ISpace {
 export interface IProject extends Document {
   projectId: string;
   projectName: string;
+  profile: string;
   projectDescription?: string;
   ownerId?: string;
   ownerName?: string;
@@ -41,6 +42,7 @@ const ProjectSchema: Schema = new Schema(
       index: true,
     },
     projectName: { type: String, required: true },
+  profile:{ type: String },
     projectDescription: { type: String },
     ownerId: { type: String },
     ownerName: { type: String },

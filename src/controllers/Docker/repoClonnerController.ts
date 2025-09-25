@@ -3,7 +3,7 @@ import { spawn } from "child_process";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 
-import Project from "../../models/project.schema"; // <-- new schema with spaces[]
+import Project from "../../models/project.schema"; 
 
 dotenv.config();
 
