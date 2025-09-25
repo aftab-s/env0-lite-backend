@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
 import { spawn } from "child_process";
 import dotenv from "dotenv";
+import { v4 as uuidv4 } from "uuid";
 
-import Project from "../../models/project.schema";
-import Space from "../../models/space.schema";
+import Project from "../../models/project.schema"; // <-- new schema with spaces[]
 
 dotenv.config();
 
 /**
  * POST /projects/:projectId/clone
  * Streams logs while cloning the repo inside container
- * Creates spaces for each root-level folder
+ * Creates spaces for each root-level folder (stored in Project.spaces[])
  */
 export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
   try {
@@ -101,19 +101,22 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
           .map((f) => f.replace("/", "").trim())
           .filter((f) => f.length > 0);
 
-        const spaces = [];
-        for (const folder of folderNames) {
-          const space = await Space.create({
-            spaceName: folder,
-            ownerId: user.userId,
-            projectId: project.projectId,
-          });
-          spaces.push(space);
-          sendLog(`📂 Space created for folder: ${folder}`);
+        const newSpaces = folderNames.map((folder) => ({
+          spaceId: uuidv4(),
+          spaceName: folder,
+          spaceDescription: "",
+        }));
+
+        // Push into project.spaces[]
+        project.spaces = [...project.spaces, ...newSpaces];
+        await project.save();
+
+        for (const space of newSpaces) {
+          sendLog(`📂 Space created: ${space.spaceName} (${space.spaceId})`);
         }
 
         sendLog("🎉 All spaces created successfully!");
-        res.write(`data: ${JSON.stringify({ success: true, spaces })}\n\n`);
+        res.write(`data: ${JSON.stringify({ success: true, spaces: newSpaces })}\n\n`);
         res.end();
       });
     });
