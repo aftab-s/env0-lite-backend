@@ -1,4 +1,4 @@
-import UserPAT, { IUserPAT } from '../models/userPAT.model';
+import UserPAT, { IUserPAT } from '../models/userPAT.schema';
 import { encrypt, decrypt } from '../utils/encryption';
 
 export const upsertUserPAT = async (email: string, pat: string): Promise<IUserPAT> => {

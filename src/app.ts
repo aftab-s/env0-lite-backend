@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 import userRoutes from "./routes/userRoutes";
 import authRoutes from "./routes/authRoutes";
 import githubPatRoutes from "./routes/githubPatRoutes";
-import dockerRoutes from "./routes/dockerRoutes";
+// import dockerRoutes from "./routes/dockerRoutes";
 import projectRoutes from "./routes/projectRoutes"
 
 const MONGO_URI = process.env.MONGO_URI;
@@ -42,8 +42,8 @@ setupSwagger(app);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/github-pat", githubPatRoutes);
-app.use("/api/docker", dockerRoutes);
-app.use("/api/pj-route", projectRoutes);
+// app.use("/api/docker", dockerRoutes);
+app.use("/api/project", projectRoutes);
 
 // Connect to MongoDB and start server
 const startServer = async () => {
