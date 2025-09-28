@@ -1,9 +1,9 @@
 import { NextFunction, Router } from "express";
 import * as ProjectController from "../controllers/github/projectController";
-import * as ContainerInjector from "../controllers/Docker/repoClonnerController"
+import * as ContainerInjector from "../controllers/terrafrom/repoClonnerController"
 import { configureAwsProfile, deleteAwsProfile } from "../controllers/Docker/keyInjector";
 import { resetRepoAndSyncSpaces } from "../controllers/Docker/pullInjector";
-import { terraformInitPlan, terraformApply } from "../controllers/Docker/terraformInjector";
+import { terraformInit, terraformPlan, terraformApply, terraformDestroy } from "../controllers/terrafrom/terraformInjector";
 import { authenticateToken } from "../middleware/tokenManagement";
 
 const router = Router();
@@ -45,11 +45,19 @@ router.delete(
 );
 
 // --- NEW Terraform Routes ---
-// Run terraform init && terraform plan
+
+// Run terraform init only
+router.post(
+  "/:projectId/terraform/init",
+  authenticateToken,
+  terraformInit
+);
+
+// Run terraform plan only
 router.post(
   "/:projectId/terraform/plan",
   authenticateToken,
-  terraformInitPlan
+  terraformPlan
 );
 
 // Run terraform apply --auto-approve
@@ -59,7 +67,13 @@ router.post(
   terraformApply
 );
 
+// Run terraform apply --auto-approve
+router.post(
+  "/:projectId/terraform/destroy",
+  authenticateToken,
+  terraformDestroy
+);
 
-router.put("/:projectId/reset-branch",authenticateToken, resetRepoAndSyncSpaces);
+router.put("/:projectId/reset-branch", authenticateToken, resetRepoAndSyncSpaces);
 
 export default router;

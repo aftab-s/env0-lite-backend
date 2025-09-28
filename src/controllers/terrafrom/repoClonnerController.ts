@@ -51,13 +51,13 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
     // Step 1: Create folder & clone repo
     sendLog(`Cloning repo ${project.repoUrl} into ${workspacePath}...\n`);
 
-    const cloneProcess = spawn("docker", [
-      "exec",
-      containerId,
-      "sh",
-      "-c",
-      `mkdir -p ${workspacePath} && git clone -b ${project.branch || "main"} ${project.repoUrl} ${workspacePath}`
-    ]);
+const cloneProcess = spawn("docker", [
+  "exec",
+  containerId,
+  "sh",
+  "-c",
+  `mkdir -p "${workspacePath}" && git clone -b "${project.branch || "main"}" "${project.repoUrl}" "${workspacePath}"`
+]);
 
     cloneProcess.stdout.on("data", (data) => {
       sendLog(data.toString());
