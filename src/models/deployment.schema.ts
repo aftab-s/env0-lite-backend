@@ -1,19 +1,22 @@
 import { Document } from "mongoose";
 
+
 export interface DeploymentStepLog {
   step: "init" | "plan" | "apply" | "destroy";
   stepStatus: "pending" | "running" | "successful" | "failed";
   message: string;
   timestamp: Date;
+  structuredData?: any;
 }
 
-export interface DeploymentLogs extends Document {
-  logId: string;
+
+export interface Deployment extends Document {
+  deploymentId: string;
   projectId: string;
   spaceId: string;
   deploymentName: string;
   deploymentSummary?: string;
-  logs: DeploymentStepLog[];
+  steps: DeploymentStepLog[];
   startedAt: Date;
   finishedAt?: Date;
   createdAt: Date;
@@ -22,9 +25,10 @@ export interface DeploymentLogs extends Document {
 import { Schema, model } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 
-const DeploymentLogsSchema = new Schema(
+
+const DeploymentSchema = new Schema(
   {
-    logId: {
+    deploymentId: {
       type: String,
       default: uuidv4,
       unique: true,
@@ -43,7 +47,7 @@ const DeploymentLogsSchema = new Schema(
     deploymentName: { type: String, required: true, unique: true }, // e.g. "Sangeeth Project EC2 Deployment-9/29/2025"
     deploymentSummary: { type: String }, // optional short text
     
-    logs: [
+    steps: [
       {
         step: { type: String, required: true }, // init | plan | apply | destroy
         stepStatus: {
@@ -53,6 +57,7 @@ const DeploymentLogsSchema = new Schema(
         },
         message: { type: String, required: true },
         timestamp: { type: Date, default: Date.now },
+        structuredData: { type: Schema.Types.Mixed },
       },
     ],
     startedAt: { type: Date, default: Date.now },
@@ -61,4 +66,4 @@ const DeploymentLogsSchema = new Schema(
   { timestamps: true }
 );
 
-export default model("DeploymentLogs", DeploymentLogsSchema);
+export default model("Deployment", DeploymentSchema);

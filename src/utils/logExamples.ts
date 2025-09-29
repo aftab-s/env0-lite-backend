@@ -79,7 +79,7 @@
 //  * 
 //  * Formatted Log Entry:
 //  * {
-//  *   "logId": "uuid-here",
+//  *   "deploymentId": "uuid-here",
 //  *   "message": "Terraform apply completed successfully",
 //  *   "step": "apply",
 //  *   "stepStatus": "completed",

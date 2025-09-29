@@ -1,8 +1,10 @@
+// controllers/Docker/terraformInjector.ts
 import { Request, Response } from "express";
 import { spawn } from "child_process";
 import Project from "../../models/project.schema";
-import * as LogsRepository from "../../repositories/logs.reposiory";
-import { v4 as uuidv4 } from "uuid";
+import * as DeploymentRepository from "../../repositories/deployment.reposiory";
+import Deployment from "../../models/deployment.schema";
+import { generateDeploymentIdentifiers } from "../../utils/deploymentIDGenerator";
 
 type CommandResult = {
   exitCode: number | null;
@@ -50,7 +52,9 @@ const parseTerraformSummary = (stdout: string): CommandResult["summary"] => {
       break;
     }
 
-    const destroyMatch = line.match(/Destroy complete! Resources:\s+(\d+)\s+destroyed/);
+    const destroyMatch = line.match(
+      /Destroy complete! Resources:\s+(\d+)\s+destroyed/
+    );
     if (destroyMatch) {
       summary = {
         destroyed: parseInt(destroyMatch[1], 10),
@@ -119,41 +123,91 @@ const runCommands = (
 
 /**
  * POST /projects/:projectId/terraform/init
+ * Creates a new DeploymentLog document
  */
+
+
 export const terraformInit = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { spaceName } = req.body;
+    const { spaceName, deploymentId } = req.body;
 
-    if (!spaceName) return res.status(400).json({ error: "spaceName is required" });
+    if (!spaceName) {
+      return res.status(400).json({ error: "spaceName is required" });
+    }
 
     const project = await Project.findOne({ projectId });
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
     const containerId = process.env.CONTAINERID;
-    if (!containerId) return res.status(500).json({ error: "CONTAINERID not set" });
+    if (!containerId) {
+      return res.status(500).json({ error: "CONTAINERID not set" });
+    }
 
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
-
     const result = await runCommands(containerId, workspacePath, [
       "terraform init -input=false -no-color",
     ]);
 
-    // --- Create new deployment log only if not exists ---
-    const deploymentName = `${project.projectName} ${spaceName} Deployment-${new Date().toLocaleDateString("en-US")}`;
-    const logId = uuidv4();
+    let finalDeploymentId = deploymentId;
+    let deploymentName = "";
 
-    const logDoc = await LogsRepository.createDeploymentLog({
-      logId,
-      projectId,
-      spaceId: spaceName,
+    if (deploymentId) {
+      // Update existing deployment: add or update init step
+      const existing = await Deployment.findOne({ deploymentId });
+      if (!existing) {
+        return res.status(404).json({ error: "Deployment not found" });
+      }
+      deploymentName = existing.deploymentName;
+      // Remove any previous init step, then push new one
+      await Deployment.updateOne(
+        { deploymentId },
+        { $pull: { steps: { step: "init" } } }
+      );
+      await Deployment.updateOne(
+        { deploymentId },
+        {
+          $push: {
+            steps: {
+              step: "init",
+              stepStatus: result.exitCode === 0 ? "successful" : "failed",
+              message: result.stdout || result.stderr,
+            },
+          },
+        }
+      );
+    } else {
+      // Create new deployment
+      const identifiers = await generateDeploymentIdentifiers(
+        project.projectName,
+        spaceName
+      );
+      finalDeploymentId = identifiers.deploymentId;
+      deploymentName = identifiers.deploymentName;
+      await Deployment.create({
+        deploymentId: finalDeploymentId,
+        projectId,
+        spaceId: spaceName,
+        deploymentName,
+        steps: [
+          {
+            step: "init",
+            stepStatus: result.exitCode === 0 ? "successful" : "failed",
+            message: result.stdout || result.stderr,
+          },
+        ],
+        startedAt: new Date(),
+      });
+    }
+
+    res.json({
+      command: "terraform init",
+      deploymentId: finalDeploymentId,
       deploymentName,
-      step: "init",
-      stepStatus: result.exitCode === 0 ? "successful" : "failed",
-      message: result.stdout || result.stderr,
+      ...result,
     });
-
-    res.json({ command: "terraform init", logId: logDoc.logId, ...result });
   } catch (err: any) {
     console.error("Terraform init error:", err);
     res.status(500).json({ error: err.message });
@@ -162,15 +216,15 @@ export const terraformInit = async (req: Request, res: Response) => {
 
 /**
  * POST /projects/:projectId/terraform/plan
- * Uses terraform show -json for stable machine-readable output
+ * Appends a "plan" step log to an existing deployment
  */
 export const terraformPlan = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { spaceName, logId } = req.body;
+    const { spaceName, deploymentId } = req.body;
 
     if (!spaceName) return res.status(400).json({ error: "spaceName is required" });
-    if (!logId) return res.status(400).json({ error: "logId is required (from init)" });
+    if (!deploymentId) return res.status(400).json({ error: "deploymentId is required" });
 
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
@@ -181,12 +235,12 @@ export const terraformPlan = async (req: Request, res: Response) => {
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
 
     const humanReadablePlan = await runCommands(containerId, workspacePath, [
-      "terraform plan -input=false -no-color"
+      "terraform plan -input=false -no-color",
     ]);
 
     const structuredPlan = await runCommands(containerId, workspacePath, [
       "terraform plan -input=false -no-color -out=tfplan",
-      "terraform show -json tfplan"
+      "terraform show -json tfplan",
     ]);
 
     let planJson: any = null;
@@ -196,12 +250,13 @@ export const terraformPlan = async (req: Request, res: Response) => {
       console.error("Failed to parse terraform show -json:", e);
     }
 
-    // --- Append log step to existing deployment log ---
-    await LogsRepository.addLogStep({
-      logId,
+    // Append plan step with structuredData
+    await DeploymentRepository.addDeploymentStep({
+      deploymentId,
       step: "plan",
       stepStatus: humanReadablePlan.exitCode === 0 ? "successful" : "failed",
       message: humanReadablePlan.stdout || humanReadablePlan.stderr,
+      structuredData: planJson,
     });
 
     res.json({
@@ -216,23 +271,24 @@ export const terraformPlan = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 /**
  * POST /projects/:projectId/terraform/apply
+ * Appends an "apply" step log
  */
 export const terraformApply = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { spaceName } = req.body;
+    const { spaceName, deploymentId } = req.body;
 
-    if (!spaceName)
-      return res.status(400).json({ error: "spaceName is required" });
+    if (!spaceName) return res.status(400).json({ error: "spaceName is required" });
+    if (!deploymentId) return res.status(400).json({ error: "deploymentId is required" });
 
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     const containerId = process.env.CONTAINERID;
-    if (!containerId)
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    if (!containerId) return res.status(500).json({ error: "CONTAINERID not set" });
 
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
 
@@ -240,7 +296,14 @@ export const terraformApply = async (req: Request, res: Response) => {
       "terraform apply -auto-approve -input=false -no-color",
     ]);
 
-    res.json({ command: "terraform apply", ...result });
+    await DeploymentRepository.addDeploymentStep({
+      deploymentId,
+      step: "apply",
+      stepStatus: result.exitCode === 0 ? "successful" : "failed",
+      message: result.stdout || result.stderr,
+    });
+
+    res.json({ command: "terraform apply", deploymentId, ...result });
   } catch (err: any) {
     console.error("Terraform apply error:", err);
     res.status(500).json({ error: err.message });
@@ -249,21 +312,21 @@ export const terraformApply = async (req: Request, res: Response) => {
 
 /**
  * POST /projects/:projectId/terraform/destroy
+ * Appends a "destroy" step log
  */
 export const terraformDestroy = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { spaceName } = req.body;
+    const { spaceName, deploymentId } = req.body;
 
-    if (!spaceName)
-      return res.status(400).json({ error: "spaceName is required" });
+    if (!spaceName) return res.status(400).json({ error: "spaceName is required" });
+    if (!deploymentId) return res.status(400).json({ error: "deploymentId is required" });
 
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     const containerId = process.env.CONTAINERID;
-    if (!containerId)
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    if (!containerId) return res.status(500).json({ error: "CONTAINERID not set" });
 
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
 
@@ -271,7 +334,14 @@ export const terraformDestroy = async (req: Request, res: Response) => {
       "terraform destroy -auto-approve -input=false -no-color",
     ]);
 
-    res.json({ command: "terraform destroy", ...result });
+    await DeploymentRepository.addDeploymentStep({
+      deploymentId,
+      step: "destroy",
+      stepStatus: result.exitCode === 0 ? "successful" : "failed",
+      message: result.stdout || result.stderr,
+    });
+
+    res.json({ command: "terraform destroy", deploymentId, ...result });
   } catch (err: any) {
     console.error("Terraform destroy error:", err);
     res.status(500).json({ error: err.message });

@@ -17,7 +17,7 @@ The enhanced logging system provides comprehensive tracking and structured stora
 
 ```typescript
 interface ILog {
-  logId: string;              // Unique identifier
+  deploymentId: string;              // Unique identifier
   projectId: string;          // Project identifier
   spaceId: string;            // Space/environment identifier
   message: string;            // Human-readable message
@@ -52,7 +52,7 @@ Response Format:
   "success": true,
   "logs": [
     {
-      "logId": "uuid",
+  "deploymentId": "uuid",
       "message": "Terraform apply completed successfully",
       "step": "apply",
       "stepStatus": "completed",

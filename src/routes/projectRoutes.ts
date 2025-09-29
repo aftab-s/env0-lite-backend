@@ -3,7 +3,7 @@ import * as ProjectController from "../controllers/github/projectController";
 import * as ContainerInjector from "../controllers/terrafrom/repoClonnerController"
 import { configureAwsProfile, deleteAwsProfile } from "../controllers/Docker/keyInjector";
 import { resetRepoAndSyncSpaces } from "../controllers/Docker/pullInjector";
-import { terraformInit, terraformPlan, terraformApply, terraformDestroy } from "../controllers/terrafrom/terraformInjector";
+// Removed: Terraform routes now in terrafromRoutes.ts
 import { authenticateToken } from "../middleware/tokenManagement";
 
 const router = Router();
@@ -44,35 +44,7 @@ router.delete(
   deleteAwsProfile
 );
 
-// --- NEW Terraform Routes ---
-
-// Run terraform init only
-router.post(
-  "/:projectId/terraform/init",
-  authenticateToken,
-  terraformInit
-);
-
-// Run terraform plan only
-router.post(
-  "/:projectId/terraform/plan",
-  authenticateToken,
-  terraformPlan
-);
-
-// Run terraform apply --auto-approve
-router.post(
-  "/:projectId/terraform/apply",
-  authenticateToken,
-  terraformApply
-);
-
-// Run terraform apply --auto-approve
-router.post(
-  "/:projectId/terraform/destroy",
-  authenticateToken,
-  terraformDestroy
-);
+// ...existing code...
 
 router.put("/:projectId/reset-branch", authenticateToken, resetRepoAndSyncSpaces);
 
