@@ -13,6 +13,7 @@ function generateUsername(name: string) {
 
 const ManualAuthController = {
     
+
   async signup(req: Request, res: Response) {
     const { name, email, password, role } = req.body as UserInput;
     if (!name || !email || !password || !role) return res.status(400).json({ error: 'Missing fields' });
@@ -25,7 +26,16 @@ const ManualAuthController = {
     const username = generateUsername(name);
 
     const user = await createUser({ userId, username, name, email, password: hashed, role });
-    res.status(201).json({ userId: user.userId, username: user.username, name: user.name, email: user.email, role: user.role, status: user.status });
+    res.status(201).json({
+      userId: user.userId,
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      githubPAT: user.githubPAT,
+      onboardingCompleted: user.onboardingCompleted
+    });
   },
 
   async login(req: Request, res: Response) {
@@ -40,7 +50,15 @@ const ManualAuthController = {
 
     // Include userId, username, name in token
     const token = generateToken({ userId: user.userId, username: user.username, name: user.name, role: user.role });
-    res.json({ token });
+    res.json({
+      token,
+      userId: user.userId,
+      username: user.username,
+      role: user.role,
+      email: user.email,
+      githubPAT: user.githubPAT,
+      onboardingCompleted: user.onboardingCompleted
+    });
   },
 
   async getAllUsers(req: Request, res: Response) {

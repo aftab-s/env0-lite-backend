@@ -1,7 +1,7 @@
 'use client'
 import { Request, Response } from "express";
 import { Buffer } from 'buffer';
-import { upsertUserPAT, getUserPAT } from "../../repositories/userPAT.repository";
+import { upsertUserPAT, getUserPATByUserId } from "../../repositories/userPAT.repository";
 import {
   fetchUserRepos,
   fetchRepoContents,
@@ -10,12 +10,13 @@ import {
 } from "../../services/githubPatService";
 
 export const savePAT = async (req: Request, res: Response) => {
-  const { email, pat } = req.body;
-  if (!email || !pat)
-    return res.status(400).json({ error: "Email and PAT required" });
-
+  // userId should be set by authentication middleware (e.g., req.user.userId)
+  const { pat } = req.body;
+  const userId = (req as any).user?.userId;
+  if (!userId || !pat)
+    return res.status(400).json({ error: "userId (from token) and PAT required" });
   try {
-    await upsertUserPAT(email, pat);
+    await upsertUserPAT(userId, pat);
     res.json({ message: "PAT saved" });
   } catch (err) {
     console.error("Error in savePAT:", err);
@@ -27,22 +28,24 @@ export const savePAT = async (req: Request, res: Response) => {
 };
 
 export const getRepos = async (req: Request, res: Response) => {
-  const { email,pat } = req.params;
-  
+  // userId should be set by authentication middleware (e.g., req.user.userId)
+  const userId = (req as any).user?.userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
   try {
-    // const userPat = await getUserPAT(email);
-    // if (!userPat) {
-    //   return res.status(404).json({ error: "PAT not found for user" });
-    // }
-
-    const repos = await fetchUserRepos(pat);
-
-    // Extract repo name and owner
-    const repoList = repos.map((repo: any) => ({
-      name: repo.name,
-      owner: repo.owner?.login || null
+    const userPat = await getUserPATByUserId(userId);
+    if (!userPat || !userPat.githubPAT) {
+      return res.status(404).json({ error: "PAT not found for user" });
+    }
+    const repos = await fetchUserRepos(userPat.githubPAT);
+    // Extract repo name and owner, and fetch branches for each
+    const repoList = await Promise.all(repos.map(async (repo: any) => {
+      const branches = await getBranches(repo.owner.login, repo.name, userPat.githubPAT);
+      return {
+        name: repo.name,
+        owner: repo.owner?.login || null,
+        branches: branches.map((b: any) => b.name) // Assuming branches is an array of objects with 'name'
+      };
     }));
-
     res.json(repoList);
   } catch (err: any) {
     if (err.status === 401) {
@@ -55,16 +58,13 @@ export const getRepos = async (req: Request, res: Response) => {
 
 
 export const getRepoContents = async (req: Request, res: Response) => {
-  const { email, owner, repo } = req.params;
+  const { userId, owner, repo } = req.params;
   const path = req.params[0] || "";
-
   try {
-    const userPat = await getUserPAT(email);
-    if (!userPat)
+    const userPat = await getUserPATByUserId(userId);
+    if (!userPat || !userPat.githubPAT)
       return res.status(404).json({ error: "PAT not found for user" });
-
-    const contents = await fetchRepoContents(userPat.pat, owner, repo, path);
-
+    const contents = await fetchRepoContents(userPat.githubPAT, owner, repo, path);
     // If contents is an array, it's a directory listing
     if (Array.isArray(contents)) {
       const folders = contents.filter((item: any) => item.type === 'dir');
@@ -85,7 +85,6 @@ export const getRepoContents = async (req: Request, res: Response) => {
         }))
       });
     }
-
     // If contents is a file, decode and return content
     if (contents.type === 'file') {
       let decoded = null;
@@ -102,7 +101,6 @@ export const getRepoContents = async (req: Request, res: Response) => {
         encoding: contents.encoding
       });
     }
-
     // If not recognized, just return as is
     res.json(contents);
   } catch (err: any) {
@@ -137,12 +135,12 @@ export const getRepoTree = async (req: Request, res: Response) => {
 
 // Get decoded file content by filename (separate API)
 export const getFileContent = async (req: Request, res: Response) => {
-  const { email, owner, repo, filename } = req.params;
+  const { userId, owner, repo, filename } = req.params;
   const path = req.params[0] ? req.params[0] + '/' + filename : filename;
   try {
-    const userPat = await getUserPAT(email);
-    if (!userPat) return res.status(404).json({ error: 'PAT not found for user' });
-    const file = await fetchRepoContents(userPat.pat, owner, repo, path);
+    const userPat = await getUserPATByUserId(userId);
+    if (!userPat || !userPat.githubPAT) return res.status(404).json({ error: 'PAT not found for user' });
+    const file = await fetchRepoContents(userPat.githubPAT, owner, repo, path);
     if (!file || file.type !== 'file') {
       return res.status(404).json({ error: 'File not found' });
     }

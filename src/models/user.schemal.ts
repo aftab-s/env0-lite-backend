@@ -7,6 +7,8 @@ export interface UserDocument extends Document {
   name: string;
   email: string;
   role: string;
+  githubPAT: string;
+  onboardingCompleted: boolean;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -19,6 +21,8 @@ const userSchema = new Schema<UserDocument>(
     password: { type: String, required: true },
     status: { type: String, required: true },
     name: { type: String, required: true },
+    githubPAT: { type: String, default: null },
+    onboardingCompleted: { type: Boolean, default: false }, 
     email: { type: String, required: true, unique: true },
     role: { type: String, required: true }, // e.g., "admin", "user"
   },

@@ -1,18 +1,21 @@
-import UserPAT, { IUserPAT } from '../models/userPAT.schema';
-import { encrypt, decrypt } from '../utils/encryption';
+import { decrypt } from '../utils/encryption';
+import User from '../models/user.schemal';
+import { encrypt } from '../utils/encryption';
 
-export const upsertUserPAT = async (email: string, pat: string): Promise<IUserPAT> => {
+// PUT: Update githubPAT and onboardingCompleted for a user by userId
+export const upsertUserPAT = async (userId: string, pat: string) => {
   const encryptedPAT = encrypt(pat);
-  return UserPAT.findOneAndUpdate(
-    { email },
-    { pat: encryptedPAT },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+  return User.findOneAndUpdate(
+    { userId },
+    { githubPAT: encryptedPAT, onboardingCompleted: true },
+    { new: true }
   );
 };
 
-export const getUserPAT = async (email: string): Promise<IUserPAT | null> => {
-  const userPat = await UserPAT.findOne({ email });
-  if (!userPat) return null;
-  userPat.pat = decrypt(userPat.pat);
-  return userPat;
+// GET: Retrieve githubPAT for a user by userId (decrypted)
+export const getUserPATByUserId = async (userId: string) => {
+  const user = await User.findOne({ userId });
+  if (!user || !user.githubPAT) return null;
+  const decryptedPAT = decrypt(user.githubPAT);
+  return { userId: user.userId, githubPAT: decryptedPAT, onboardingCompleted: user.onboardingCompleted };
 };

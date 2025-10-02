@@ -6,11 +6,12 @@ import {
   getRepoContents, getFileContent,
   getRepoTree, getRepoBranches
 } from "../controllers/github/githubPatController";
+import { authenticateToken } from "../middleware/tokenManagement";
 
 const router = Router();
 
-router.post("/save-pat", savePAT);
-router.get("/repos/:pat", getRepos);
+router.post("/save-pat", authenticateToken, savePAT);
+router.get("/list-repos", authenticateToken, getRepos);
 
 //API to get the content of a specific file in a repo
 router.get('/repos/:email/:owner/:repo/file/*/:filename', getFileContent);
