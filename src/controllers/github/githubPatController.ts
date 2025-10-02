@@ -27,6 +27,24 @@ export const savePAT = async (req: Request, res: Response) => {
   }
 };
 
+export const updatePAT = async (req: Request, res: Response) => {
+  // userId should be set by authentication middleware (e.g., req.user.userId)
+  const { pat } = req.body;
+  const userId = (req as any).user?.userId;
+  if (!userId || !pat)
+    return res.status(400).json({ error: "userId (from token) and PAT required" });
+  try {
+    await upsertUserPAT(userId, pat);
+    res.json({ message: "PAT updated" });
+  } catch (err) {
+    console.error("Error in updatePAT:", err);
+    res.status(500).json({
+      error: "Failed to update PAT",
+      details: err instanceof Error ? err.message : err,
+    });
+  }
+};
+
 export const getRepos = async (req: Request, res: Response) => {
   // userId should be set by authentication middleware (e.g., req.user.userId)
   const userId = (req as any).user?.userId;
@@ -164,18 +182,3 @@ export const getFileContent = async (req: Request, res: Response) => {
   }
 };
 
-
-export async function getRepoBranches(req: Request, res: Response) {
-  try {
-    const { owner, repo, pat } = req.body;
-
-    if (!pat) {
-      return res.status(401).json({ error: "Missing GitHub access token" });
-    }
-
-    const branches = await getBranches(owner, repo, pat);
-    res.json(branches);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-}
