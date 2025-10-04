@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { terraformInit, terraformPlan, terraformApply, terraformDestroy } from "../controllers/terrafrom/terraformInjector";
-import { getDeploymentSummary } from "../controllers/logs/deploymentController";
+import { getDeploymentSummary } from "../controllers/deployment/deploymentController";
 import { authenticateToken } from "../middleware/tokenManagement";
 
 const router = Router();
