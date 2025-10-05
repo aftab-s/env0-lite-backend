@@ -64,4 +64,7 @@ const ProjectSchema: Schema = new Schema(
 // Index for quickly finding which project contains a space
 ProjectSchema.index({ "spaces.spaceId": 1 });
 
+// Index for ownerId to speed up queries by owner
+ProjectSchema.index({ ownerId: 1 });
+
 export default mongoose.model<IProject>("Project", ProjectSchema);
