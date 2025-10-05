@@ -25,6 +25,9 @@ router.get("/get-all-projects", authenticateToken, ProjectController.getProjects
 // Retrieve a project by its ID
 router.get("/get-project-by-id/:projectId", authenticateToken, ProjectController.getProjectById);
 
+// Retrieve projects by owner ID (from authenticated user)
+router.get("/get-projects-by-owner", authenticateToken, ProjectController.getProjectsByOwner);
+
 // --- New Route: Clone repo & create spaces (with SSE logs) ---
 router.post(
   "/:projectId/inject-to-container",

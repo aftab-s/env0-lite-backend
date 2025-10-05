@@ -19,6 +19,7 @@ export interface IProject extends Document {
   csp?: "aws" | "gcp" | "azure";
   status: "idle" | "running" | "error";
   spaces: ISpace[];
+  steps: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +56,7 @@ const ProjectSchema: Schema = new Schema(
       default: "idle",
     },
     spaces: [SpaceSchema],
+    steps: { type: String, default: "" },
   },
   { timestamps: true }
 );

@@ -9,7 +9,7 @@ import * as ProjectRepository from "../../repositories/project.repository";
  */
 export const createProject = async (req: Request, res: Response) => {
   try {
-    const { projectName, projectDescription} = req.body;
+    const { projectName, projectDescription, profile } = req.body;
     const user = (req as any).user;
 
     if (!projectName) {
@@ -21,8 +21,12 @@ export const createProject = async (req: Request, res: Response) => {
         .json({ error: "Unauthorized: user not found in token" });
     }
 
-    const project = await ProjectRepository.createProject(projectName, projectDescription);
+    const project = await ProjectRepository.createProject(projectName, projectDescription, profile);
     project.ownerId = user.userId; // explicitly bind owner
+    await project.save();
+
+    // Set step 1 as complete
+    project.steps = "step-1-complete";
     await project.save();
 
     res.status(201).json({ success: true, project });
@@ -51,6 +55,12 @@ export const updateProjectCsp = async (req: Request, res: Response) => {
       return res
         .status(404)
         .json({ success: false, error: "Project not found" });
+    }
+
+    // Check if step 2 is complete
+    if (project.csp && project.profile) {
+      project.steps = "step-2-complete";
+      await project.save();
     }
 
     res.json({ success: true, project });
@@ -89,6 +99,12 @@ export const updateProjectRepo = async (req: Request, res: Response) => {
         .json({ success: false, error: "Project not found" });
     }
 
+    // Check if step 3 is complete
+    if (project.repoUrl) {
+      project.steps = "step-3-complete";
+      await project.save();
+    }
+
     res.json({ success: true, project });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -124,6 +140,53 @@ export const getProjectById = async (req: Request, res: Response) => {
     }
 
     res.json({ success: true, project });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * 6. Get Projects by Owner ID
+ * GET /projects/owner
+ * OwnerId is taken from authenticated user
+ */
+export const getProjectsByOwner = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    if (!user || !user.userId) {
+      return res
+        .status(401)
+        .json({ error: "Unauthorized: user not found in token" });
+    }
+
+    const projects = await ProjectRepository.getProjectsByOwnerId(user.userId);
+
+    // Add tillnowtime field to each project
+    const projectsWithTime = projects.map(project => {
+      const now = new Date();
+      const created = new Date(project.createdAt);
+      const diffMs = now.getTime() - created.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffHours / 24);
+      const remainingHours = diffHours % 24;
+
+      let tillnowtime = '';
+      if (diffHours >= 1) {
+        if (diffDays > 0) {
+          tillnowtime = `${diffDays} day${diffDays > 1 ? 's' : ''} ${remainingHours} hour${remainingHours !== 1 ? 's' : ''} ago`;
+        } else {
+          tillnowtime = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+        }
+      } else {
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        tillnowtime = `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+      }
+
+      return { ...project.toObject(), tillnowtime };
+    });
+
+    res.json({ success: true, projects: projectsWithTime });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
