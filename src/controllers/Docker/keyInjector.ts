@@ -78,9 +78,9 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
     project.profile = profileName;
     await project.save();
 
-    // Check if step 2 is complete
+    // Check if step 3 is complete
     if (project.csp && project.profile) {
-      project.steps = "step-2-complete";
+      project.steps = "step-3-complete";
       await project.save();
     }
 

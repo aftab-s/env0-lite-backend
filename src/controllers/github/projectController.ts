@@ -58,7 +58,7 @@ export const updateProjectCsp = async (req: Request, res: Response) => {
     }
 
     // Check if step 2 is complete
-    if (project.csp && project.profile) {
+    if (project.csp) {
       project.steps = "step-2-complete";
       await project.save();
     }
@@ -101,7 +101,7 @@ export const updateProjectRepo = async (req: Request, res: Response) => {
 
     // Check if step 3 is complete
     if (project.repoUrl) {
-      project.steps = "step-3-complete";
+      project.steps = "step-4-complete";
       await project.save();
     }
 
