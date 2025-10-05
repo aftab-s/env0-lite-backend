@@ -55,3 +55,12 @@ export const getDeploymentSummary = async (req: Request, res: Response) => {
 	 res.status(500).json({ error: err.message });
   }
 };
+
+export const getDeployments = async (req: Request, res: Response) => {
+  try {
+	const deployments = await Deployment.find();
+	res.json(deployments);
+  } catch (err: any) {
+	res.status(500).json({ error: err.message });
+  }
+};
