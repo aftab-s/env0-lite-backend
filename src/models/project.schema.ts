@@ -19,6 +19,7 @@ export interface IProject extends Document {
   csp?: "aws" | "gcp" | "azure";
   status: "idle" | "running" | "error";
   spaces: ISpace[];
+  steps: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,11 +56,15 @@ const ProjectSchema: Schema = new Schema(
       default: "idle",
     },
     spaces: [SpaceSchema],
+    steps: { type: String, default: "" },
   },
   { timestamps: true }
 );
 
 // Index for quickly finding which project contains a space
 ProjectSchema.index({ "spaces.spaceId": 1 });
+
+// Index for ownerId to speed up queries by owner
+ProjectSchema.index({ ownerId: 1 });
 
 export default mongoose.model<IProject>("Project", ProjectSchema);

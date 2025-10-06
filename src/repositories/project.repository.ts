@@ -3,9 +3,10 @@ import Project, { IProject } from '../models/project.schema';
 // 1. Create Project (POST /projects)
 export const createProject = async (
   projectName: string,
-  projectDescription?: string
+  projectDescription?: string,
+  profile?: string
 ): Promise<IProject> => {
-  return await Project.create({ projectName, projectDescription });
+  return await Project.create({ projectName, projectDescription, profile });
 };
 
 // 2. Update CSP (PUT /projects/:projectId/csp)
@@ -47,4 +48,11 @@ export const getProjectById = async (
   return await Project.findOne({ projectId });
 };
 
-// 6. Clone repo into workspace (POST /projects/:projectId/clone)
+// 6. Get projects by owner ID (GET /projects/owner)
+export const getProjectsByOwnerId = async (
+  ownerId: string
+): Promise<IProject[]> => {
+  return await Project.find({ ownerId });
+};
+
+// 7. Clone repo into workspace (POST /projects/:projectId/clone)

@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { createUser, getAllUsers, getUserById, updateUser, findByEmail, softDeleteUser, hardDeleteUser } from '../../repositories/user.repository';
 import { generateToken } from '../../middleware/tokenManagement';
 import { UserInput, UserRole } from '../../types/user.types';
+import * as ProjectRepository from '../../repositories/project.repository';
+import Project from '../../models/project.schema';
 
 function generateUsername(name: string) {
   const base = name.split(' ')[0].toLowerCase();
@@ -48,6 +50,10 @@ const ManualAuthController = {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
+    // Check if user has any projects
+    const projectCount = await Project.countDocuments({ ownerId: user.userId });
+    const isProjectThere = projectCount > 0 ? 'yes' : 'no';
+
     // Include userId, username, name in token
     const token = generateToken({ userId: user.userId, username: user.username, name: user.name, role: user.role });
     res.json({
@@ -57,7 +63,8 @@ const ManualAuthController = {
       role: user.role,
       email: user.email,
       githubPAT: user.githubPAT,
-      onboardingCompleted: user.onboardingCompleted
+      onboardingCompleted: user.onboardingCompleted,
+      isProjectThere
     });
   },
 
