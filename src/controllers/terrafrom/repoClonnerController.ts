@@ -81,7 +81,7 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
       containerId,
       "sh",
       "-c",
-      `cd ${workspacePath} && ls -d */ || true`
+      `cd "${workspacePath}" && ls -d */ || true`
     ]);
 
     let folderBuffer = "";

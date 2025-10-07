@@ -3,6 +3,7 @@ import * as ProjectController from "../controllers/github/projectController";
 import * as ContainerInjector from "../controllers/terrafrom/repoClonnerController"
 import { configureAwsProfile, deleteAwsProfile } from "../controllers/Docker/keyInjector";
 import { resetRepoAndSyncSpaces } from "../controllers/Docker/pullInjector";
+import * as SpacesController from "../controllers/spaces/spacesController";
 // Removed: Terraform routes now in terrafromRoutes.ts
 import { authenticateToken } from "../middleware/tokenManagement";
 
@@ -27,6 +28,9 @@ router.get("/get-project-by-id/:projectId", authenticateToken, ProjectController
 
 // Retrieve projects by owner ID (from authenticated user)
 router.get("/get-projects-by-owner", authenticateToken, ProjectController.getProjectsByOwner);
+
+// Get spaces for a specific project
+router.get("/:projectId/spaces", authenticateToken, SpacesController.getSpacesByProjectId);
 
 // --- New Route: Clone repo & create spaces (with SSE logs) ---
 router.post(

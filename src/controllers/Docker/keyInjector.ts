@@ -80,7 +80,7 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
 
     // Check if step 3 is complete
     if (project.csp && project.profile) {
-      project.steps = "step-3-complete";
+      project.steps = "Pending Repo Connection";
       await project.save();
     }
 
