@@ -19,7 +19,7 @@ COPY . .
 RUN npm run build
 
 # Remove dev dependencies and source files after build
-RUN rm -rf src tsconfig.json .eslintrc.js .prettierrc && \
+RUN rm -rf src tsconfig.json .prettierrc && \
     npm prune --production
 
 # Change ownership to nodejs user

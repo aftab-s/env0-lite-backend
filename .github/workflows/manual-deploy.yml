@@ -17,7 +17,7 @@ on:
         - production
 
 env:
-  DOCKER_IMAGE: env0-lite/backend
+  DOCKER_IMAGE: thebagelproject/bagel-backend
   NODE_VERSION: '20'
   APP_PORT: '5000'
 
