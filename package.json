@@ -6,8 +6,11 @@
     "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/app.js",
+    "start:prod": "NODE_ENV=production node dist/app.js",
     "lint": "eslint . --ext .ts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "type-check": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "Sangeth Promod",
