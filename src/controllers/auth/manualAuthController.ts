@@ -13,6 +13,16 @@ function generateUsername(name: string) {
   return `${base}_${rand}`;
 }
 
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) return false;
+  const domain = email.split('@')[1].toLowerCase();
+  const forbiddenDomains = ['example.com', 'test.com'];
+  if (forbiddenDomains.includes(domain)) return false;
+  if (domain.includes('admin')) return false;
+  return true;
+}
+
 const ManualAuthController = {
     
 
@@ -20,15 +30,19 @@ const ManualAuthController = {
     const { name, email, password, role } = req.body as UserInput;
     if (!name || !email || !password || !role) return res.status(400).json({ error: 'Missing fields' });
 
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email address' });
+
     const existing = await findByEmail(email);
-    if (existing) return res.status(409).json({ error: 'Email already exists' });
+    if (existing) return res.status(409).json({ error: 'User already exists' });
 
     const hashed = await bcrypt.hash(password, 10);
     const userId = uuidv4();
     const username = generateUsername(name);
 
     const user = await createUser({ userId, username, name, email, password: hashed, role });
+    const token = generateToken({ userId: user.userId, username: user.username, email: user.email, role: user.role });
     res.status(201).json({
+      token,
       userId: user.userId,
       username: user.username,
       name: user.name,
@@ -141,8 +155,10 @@ const ManualAuthController = {
   // Hard delete: remove from DB
   async hardDeleteUser(req: Request, res: Response) {
     const { id } = req.params;
-    const user = await hardDeleteUser(id);
+    const user = await getUserById(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    await Project.deleteMany({ ownerId: id });
+    await hardDeleteUser(id);
     res.json({ message: 'User hard deleted', userId: user.userId });
   },
 };

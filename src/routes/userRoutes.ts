@@ -28,6 +28,6 @@ router.put('/users/:id', authenticateToken, ManualAuthController.updateUser);
 router.delete('/users/:id/soft', authenticateToken, ManualAuthController.softDeleteUser);
 
 // Hard delete user by ID (protected)
-router.delete('/users/:id/hard', authenticateToken, ManualAuthController.hardDeleteUser);
+router.delete('/:id/hard', authenticateToken, ManualAuthController.hardDeleteUser);
 
 export default router;
