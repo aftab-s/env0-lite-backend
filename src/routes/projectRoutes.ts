@@ -34,7 +34,7 @@ router.get("/get-projects-by-owner", authenticateToken, ProjectController.getPro
 router.get("/:projectId/spaces", authenticateToken, SpacesController.getSpacesByProjectId);
 
 // Delete project and related data
-router.delete("/:projectId", authenticateToken, deleteProject);
+router.delete("/:projectId/delete", authenticateToken, deleteProject);
 
 // --- New Route: Clone repo & create spaces (with SSE logs) ---
 router.post(
