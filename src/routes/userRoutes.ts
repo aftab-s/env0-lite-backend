@@ -24,10 +24,13 @@ router.get('/get-user-by-id', authenticateToken, ManualAuthController.getUserByI
 // Update user by ID (protected)
 router.put('/update-user', authenticateToken, ManualAuthController.updateUser);
 
+// Update password (protected)
+router.put('/update-password', authenticateToken, ManualAuthController.updatePassword);
+
 // Soft delete user by ID (protected)
 router.delete('/users/:id/soft', authenticateToken, ManualAuthController.softDeleteUser);
 
-// Hard delete user by ID (protected)
-router.delete('/:id/hard', authenticateToken, ManualAuthController.hardDeleteUser);
+// Hard delete current user (protected)
+router.delete('/delete-hard', authenticateToken, ManualAuthController.hardDeleteUser);
 
 export default router;
