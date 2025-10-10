@@ -59,10 +59,10 @@ const ManualAuthController = {
     res.json({
       token,
       userId: user.userId,
+      name: user.name,
       username: user.username,
       role: user.role,
       email: user.email,
-      githubPAT: user.githubPAT,
       onboardingCompleted: user.onboardingCompleted,
       isProjectThere
     });
