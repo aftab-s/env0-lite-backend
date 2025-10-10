@@ -24,6 +24,10 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
+    if (project.profile) {
+      return res.status(400).json({ error: "A profile already exists. This can only be changed in the project settings" });
+    }
+
     const containerId = process.env.CONTAINERID;
     if (!containerId) {
       return res.status(500).json({ error: "CONTAINERID not set" });
@@ -80,7 +84,7 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
 
     // Check if step 3 is complete
     if (project.csp && project.profile) {
-      project.steps = "step-3-complete";
+      project.steps = "Pending Repo Connection";
       await project.save();
     }
 

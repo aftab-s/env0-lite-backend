@@ -31,6 +31,11 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Project repoUrl or name missing" });
     }
 
+    let repoUrl = project.repoUrl;
+    if (user.githubPAT) {
+      repoUrl = repoUrl.replace('https://github.com/', `https://x-access-token:${user.githubPAT}@github.com/`);
+    }
+
     const containerId = process.env.CONTAINERID;
     if (!containerId) {
       return res.status(500).json({ error: "CONTAINERID not set in env" });
@@ -45,14 +50,14 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
     };
 
     // Step 1: Create folder & clone repo
-    appendLog(`Cloning repo ${project.repoUrl} into ${workspacePath}...`);
+    appendLog(`Cloning repo ${repoUrl} into ${workspacePath}...`);
 
     const cloneProcess = spawn("docker", [
       "exec",
       containerId,
       "sh",
       "-c",
-      `mkdir -p "${workspacePath}" && git clone -b "${project.branch || "main"}" "${project.repoUrl}" "${workspacePath}"`
+      `mkdir -p "${workspacePath}" && git clone -b "${project.branch || "main"}" "${repoUrl}" "${workspacePath}"`
     ]);
 
     cloneProcess.stdout.on("data", (data) => {
@@ -81,7 +86,7 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
       containerId,
       "sh",
       "-c",
-      `cd ${workspacePath} && ls -d */ || true`
+      `cd "${workspacePath}" && ls -d */ || true`
     ]);
 
     let folderBuffer = "";

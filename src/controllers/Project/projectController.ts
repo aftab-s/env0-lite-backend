@@ -26,7 +26,7 @@ export const createProject = async (req: Request, res: Response) => {
     await project.save();
 
     // Set step 1 as complete
-    project.steps = "step-1-complete";
+    project.steps = "Pending CSP";
     await project.save();
 
     res.status(201).json({ success: true, project });
@@ -59,7 +59,7 @@ export const updateProjectCsp = async (req: Request, res: Response) => {
 
     // Check if step 2 is complete
     if (project.csp) {
-      project.steps = "step-2-complete";
+      project.steps = "Pending Creds";
       await project.save();
     }
 
@@ -99,9 +99,9 @@ export const updateProjectRepo = async (req: Request, res: Response) => {
         .json({ success: false, error: "Project not found" });
     }
 
-    // Check if step 3 is complete
+    // Check if project is ready
     if (project.repoUrl) {
-      project.steps = "step-4-complete";
+      project.steps = "Project Ready";
       await project.save();
     }
 
