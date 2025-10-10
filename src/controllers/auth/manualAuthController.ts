@@ -96,9 +96,8 @@ const ManualAuthController = {
   },
 
   async getUserById(req: Request, res: Response) {
-    const { id } = req.params;
-    const user = await getUserById(id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
     res.json({
       userId: user.userId,
       username: user.username,
@@ -110,38 +109,52 @@ const ManualAuthController = {
     });
   },
 
-  async getUserByEmail(req: Request, res: Response) {
-    const { email } = req.body;
-    const user = await findByEmail(email);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({
-      userId: user.userId,
-      username: user.username,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    });
-  },
+  // async getUserByEmail(req: Request, res: Response) {
+  //   const { email } = req.body;
+  //   const user = await findByEmail(email);
+  //   if (!user) return res.status(404).json({ error: 'User not found' });
+  //   res.json({
+  //     userId: user.userId,
+  //     username: user.username,
+  //     name: user.name,
+  //     email: user.email,
+  //     role: user.role,
+  //     createdAt: user.createdAt,
+  //     updatedAt: user.updatedAt,
+  //   });
+  // },
 
 
 
   async updateUser(req: Request, res: Response) {
-    const { id } = req.params;
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
     const data = req.body;
     if (data.password) delete data.password; // Don't allow password update here
-    const user = await updateUser(id, data);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const updatedUser = await updateUser(user.userId, data);
+    if (!updatedUser) return res.status(404).json({ error: 'User not found' });
     res.json({
-      userId: user.userId,
-      username: user.username,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      userId: updatedUser.userId,
+      username: updatedUser.username,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
     });
+  },
+
+  async updatePassword(req: Request, res: Response) {
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) return res.status(400).json({ error: 'Old and new password required' });
+    const valid = await bcrypt.compare(oldPassword, user.password);
+    if (!valid) return res.status(401).json({ error: 'Invalid old password' });
+    const hashed = await bcrypt.hash(newPassword, 10);
+    const updatedUser = await updateUser(user.userId, { password: hashed });
+    if (!updatedUser) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'Password updated successfully' });
   },
 
   // Soft delete: set status to INACTIVE
