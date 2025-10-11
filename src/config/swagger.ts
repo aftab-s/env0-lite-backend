@@ -13,9 +13,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'env0-lite-backend API',
+      title: 'Bagel-backend API',
       version: '1.0.0',
-      description: 'API documentation for env0-lite-backend',
+      description: 'API documentation for bagel-backend',
     },
     servers: [
       {

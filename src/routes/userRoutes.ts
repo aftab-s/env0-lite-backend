@@ -16,18 +16,21 @@ router.post('/login', ManualAuthController.login);
 router.get('/users', authenticateToken, ManualAuthController.getAllUsers);
 
 // Get user by ID (protected)
-router.get('/users/:id', authenticateToken, ManualAuthController.getUserById);
+router.get('/get-user-by-id', authenticateToken, ManualAuthController.getUserById);
 
 // Get user by Email (protected)
-router.post('/users/email', authenticateToken, ManualAuthController.getUserByEmail);
+// router.post('/users/email', authenticateToken, ManualAuthController.getUserByEmail);
 
 // Update user by ID (protected)
-router.put('/users/:id', authenticateToken, ManualAuthController.updateUser);
+router.put('/update-user', authenticateToken, ManualAuthController.updateUser);
+
+// Update password (protected)
+router.put('/update-password', authenticateToken, ManualAuthController.updatePassword);
 
 // Soft delete user by ID (protected)
 router.delete('/users/:id/soft', authenticateToken, ManualAuthController.softDeleteUser);
 
-// Hard delete user by ID (protected)
-router.delete('/users/:id/hard', authenticateToken, ManualAuthController.hardDeleteUser);
+// Hard delete current user (protected)
+router.delete('/delete-hard', authenticateToken, ManualAuthController.hardDeleteUser);
 
 export default router;
