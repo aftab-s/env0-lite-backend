@@ -10,6 +10,7 @@ type CommandResult = {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+  combined?: string;
   summary: {
     toAdd?: number;
     toChange?: number;
@@ -77,7 +78,8 @@ const runCommands = (
   return new Promise((resolve, reject) => {
     const safePath = workspacePath.replace(/(["\s'$`\\])/g, "\\$1");
     const fullCmd = commands.join(" && ");
-    const wrappedCmd = `cd ${safePath} && ${fullCmd}`;
+    // Redirect stderr to stdout to preserve output order as seen in the terminal
+    const wrappedCmd = `cd ${safePath} && ${fullCmd} 2>&1`;
 
     const proc = spawn("docker", [
       "exec",
@@ -95,8 +97,8 @@ const runCommands = (
     proc.stdout.setEncoding("utf8");
     proc.stderr.setEncoding("utf8");
 
-    let stdoutBuffer = "";
-    let stderrBuffer = "";
+  let stdoutBuffer = "";
+  let stderrBuffer = "";
 
     proc.stdout.on("data", (data) => {
       stdoutBuffer += data.toString();
@@ -107,10 +109,13 @@ const runCommands = (
     });
 
     proc.on("close", (code) => {
+      // Combine buffers to avoid losing logs that Terraform prints to stderr
+      const combined = `${stdoutBuffer}${stderrBuffer}`;
       resolve({
         exitCode: code,
         stdout: stdoutBuffer,
         stderr: stderrBuffer,
+        combined,
         summary: parseTerraformSummary(stdoutBuffer),
       });
     });
@@ -173,7 +178,7 @@ export const terraformInit = async (req: Request, res: Response) => {
             steps: {
               step: "init",
               stepStatus: result.exitCode === 0 ? "successful" : "failed",
-              message: result.stdout || result.stderr,
+              message: result.combined || result.stdout || result.stderr,
             },
           },
         }
@@ -195,7 +200,7 @@ export const terraformInit = async (req: Request, res: Response) => {
           {
             step: "init",
             stepStatus: result.exitCode === 0 ? "successful" : "failed",
-            message: result.stdout || result.stderr,
+            message: result.combined || result.stdout || result.stderr,
           },
         ],
         startedAt: new Date(),
@@ -255,7 +260,7 @@ export const terraformPlan = async (req: Request, res: Response) => {
       deploymentId,
       step: "plan",
       stepStatus: humanReadablePlan.exitCode === 0 ? "successful" : "failed",
-      message: humanReadablePlan.stdout || humanReadablePlan.stderr,
+  message: humanReadablePlan.combined || humanReadablePlan.stdout || humanReadablePlan.stderr,
       structuredData: planJson,
     });
 
@@ -303,7 +308,7 @@ export const terraformApply = async (req: Request, res: Response) => {
       message: result.stdout || result.stderr,
     });
 
-    res.json({ command: "terraform apply", deploymentId, ...result });
+  res.json({ command: "terraform apply", deploymentId, ...result });
   } catch (err: any) {
     console.error("Terraform apply error:", err);
     res.status(500).json({ error: err.message });
@@ -338,10 +343,10 @@ export const terraformDestroy = async (req: Request, res: Response) => {
       deploymentId,
       step: "destroy",
       stepStatus: result.exitCode === 0 ? "successful" : "failed",
-      message: result.stdout || result.stderr,
+      message: result.combined || result.stdout || result.stderr,
     });
 
-    res.json({ command: "terraform destroy", deploymentId, ...result });
+  res.json({ command: "terraform destroy", deploymentId, ...result });
   } catch (err: any) {
     console.error("Terraform destroy error:", err);
     res.status(500).json({ error: err.message });
