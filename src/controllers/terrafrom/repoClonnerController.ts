@@ -31,9 +31,16 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Project repoUrl or name missing" });
     }
 
-    let repoUrl = project.repoUrl;
+    // Build authenticated repo URL if PAT present (do not log the PAT)
+    const originalRepoUrl = project.repoUrl;
+    let repoUrlForClone = originalRepoUrl;
     if (user.githubPAT) {
-      repoUrl = repoUrl.replace('https://github.com/', `https://x-access-token:${user.githubPAT}@github.com/`);
+      // Use 'git' as the username and PAT as password (recommended for PAT-based HTTPS cloning)
+      // Example: https://git:<PAT>@github.com/owner/repo.git
+      repoUrlForClone = originalRepoUrl.replace(
+        /^https:\/\/github.com\//,
+        `https://git:${user.githubPAT}@github.com/`
+      );
     }
 
     const containerId = process.env.CONTAINERID;
@@ -50,35 +57,32 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
     };
 
     // Step 1: Create folder & clone repo
-    appendLog(`Cloning repo ${repoUrl} into ${workspacePath}...`);
+    // Log sanitized repo URL (without credentials)
+    appendLog(`Cloning repo ${originalRepoUrl} into ${workspacePath}...`);
 
-    const cloneProcess = spawn("docker", [
-      "exec",
-      containerId,
-      "sh",
-      "-c",
-      `mkdir -p "${workspacePath}" && git clone -b "${project.branch || "main"}" "${repoUrl}" "${workspacePath}"`
-    ]);
-
-    cloneProcess.stdout.on("data", (data) => {
-      appendLog(data.toString());
-    });
-
-    cloneProcess.stderr.on("data", (data) => {
-      appendLog("[ERROR] " + data.toString());
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      cloneProcess.on("close", (code) => {
-        if (code !== 0) {
-          appendLog(`Clone failed with exit code ${code}`);
-          reject(new Error(`Clone failed with exit code ${code}`));
-        } else {
-          appendLog("✅ Clone completed. Reading root folders...");
-          resolve();
-        }
+    const runClone = (cmd: string) => {
+      return new Promise<number>((resolve, reject) => {
+        const proc = spawn("docker", ["exec", containerId, "sh", "-c", cmd]);
+        proc.stdout.on("data", (data) => appendLog(data.toString()));
+        proc.stderr.on("data", (data) => appendLog("[ERROR] " + data.toString()));
+        proc.on("close", (code) => resolve(code ?? 1));
+        proc.on("error", (err) => reject(err));
       });
-    });
+    };
+
+    // Ensure clean workspace, then attempt clone with branch; on failure code 128, retry without -b
+    const cloneWithBranchCmd = `rm -rf "${workspacePath}" && mkdir -p "${workspacePath}" && git clone -b "${project.branch || "main"}" "${repoUrlForClone}" "${workspacePath}" 2>&1`;
+    const cloneDefaultCmd = `rm -rf "${workspacePath}" && mkdir -p "${workspacePath}" && git clone "${repoUrlForClone}" "${workspacePath}" 2>&1`;
+
+    let cloneExit = await runClone(cloneWithBranchCmd);
+    if (cloneExit !== 0) {
+      appendLog(`Clone with branch '${project.branch || "main"}" failed with exit code ${cloneExit}. Retrying without specifying branch...`);
+      cloneExit = await runClone(cloneDefaultCmd);
+    }
+    if (cloneExit !== 0) {
+      throw new Error(`Clone failed with exit code ${cloneExit}`);
+    }
+    appendLog("✅ Clone completed. Reading root folders...");
 
     // Step 2: List root-level folders
     const listProcess = spawn("docker", [
