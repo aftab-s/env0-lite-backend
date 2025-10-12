@@ -1,6 +1,5 @@
-
 import { Request, Response } from "express";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import Project from "../../models/project.schema";
 
 /**
@@ -29,10 +28,11 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "A profile already exists. This can only be changed in the project settings" });
     }
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     const runAwsCmd = (args: string[]) =>
       new Promise<void>((resolve, reject) => {
@@ -122,10 +122,11 @@ export const deleteAwsProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No profile set for this project" });
     }
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     const profileName = project.profile;
 
@@ -184,10 +185,11 @@ export const updateAwsProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     const runAwsCmd = (args: string[]) =>
       new Promise<void>((resolve, reject) => {
@@ -234,3 +236,14 @@ export const updateAwsProfile = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+function getContainerIdsByImage(imageName: string): string[] {
+  try {
+    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
+    const output = execSync(cmd, { encoding: 'utf8' });
+    return output.split('\n').filter(Boolean);
+  } catch (err) {
+    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
+    return [];
+  }
+}
