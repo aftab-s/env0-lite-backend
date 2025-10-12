@@ -41,6 +41,13 @@ export const resetRepoAndSyncSpaces = async (req: Request, res: Response) => {
         });
       });
 
+    // Check if workspace directory exists in the container
+    const checkDirCmd = `[ -d "${workspacePath}" ] && echo "exists" || echo "missing"`;
+    const dirStatus = await runCmd(checkDirCmd);
+    if (!dirStatus.includes("exists")) {
+      return res.status(400).json({ error: `Workspace directory ${workspacePath} does not exist in container. Please clone the repo first.` });
+    }
+
     // Step 1: Hard reset repo
     await runCmd(
       `cd ${workspacePath} && git fetch origin main && git reset --hard origin/main && git clean -fd`
@@ -86,7 +93,6 @@ export const resetRepoAndSyncSpaces = async (req: Request, res: Response) => {
         .map((s) => s.spaceName),
     });
   } catch (err: any) {
-    console.error("Repo reset error:", err);
     res.status(500).json({ error: err.message });
   }
 };

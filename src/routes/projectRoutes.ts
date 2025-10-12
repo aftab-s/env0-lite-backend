@@ -1,7 +1,10 @@
+// Update AWS profile credentials and name for a project
+
 import { NextFunction, Router } from "express";
 import * as ProjectController from "../controllers/Project/projectController";
 import * as ContainerInjector from "../controllers/terrafrom/repoClonnerController"
-import { configureAwsProfile, deleteAwsProfile } from "../controllers/Docker/keyInjector";
+import { configureAwsProfile, deleteAwsProfile, updateAwsProfile } from "../controllers/Docker/keyInjector";
+
 import { resetRepoAndSyncSpaces } from "../controllers/Docker/pullInjector";
 import * as SpacesController from "../controllers/spaces/spacesController";
 import { deleteProject } from "../controllers/Docker/projectAndSpaceDelete";
@@ -55,7 +58,11 @@ router.delete(
   deleteAwsProfile
 );
 
-// ...existing code...
+router.put(
+  "/:projectId/update-aws-profile",
+  authenticateToken,
+  updateAwsProfile
+);
 
 router.put("/:projectId/reset-branch", authenticateToken, resetRepoAndSyncSpaces);
 
