@@ -1,11 +1,22 @@
 import { Request, Response } from "express";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 
 import Project from "../../models/project.schema"; 
 
 dotenv.config();
+
+function getContainerIdsByImage(imageName: string): string[] {
+  try {
+    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
+    const output = execSync(cmd, { encoding: 'utf8' });
+    return output.split('\n').filter(Boolean);
+  } catch (err) {
+    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
+    return [];
+  }
+}
 
 /**
  * POST /projects/:projectId/inject-to-container
@@ -43,10 +54,11 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
       );
     }
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: "CONTAINERID not set in env" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     const workspacePath = `/workspace/${project.projectName}`;
 
@@ -76,7 +88,7 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
 
     let cloneExit = await runClone(cloneWithBranchCmd);
     if (cloneExit !== 0) {
-      appendLog(`Clone with branch '${project.branch || "main"}" failed with exit code ${cloneExit}. Retrying without specifying branch...`);
+      appendLog(`Clone with branch '${project.branch || "main"}' failed with exit code ${cloneExit}. Retrying without specifying branch...`);
       cloneExit = await runClone(cloneDefaultCmd);
     }
     if (cloneExit !== 0) {
