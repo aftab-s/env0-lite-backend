@@ -1,5 +1,3 @@
-
-version: '3.8'
 services:
   mongo-bagel:
     image: mongo:noble
@@ -19,18 +17,18 @@ services:
       start_period: 40s
 
   bagel-backend:
-    image: thebagelproject/bagel-backend
+    image: thebagelproject/bagel-backend:latest
     container_name: bagel-backend
     restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
-#      - NODE_ENV=production
-#      - PORT=5000
-#      - MONGO_URI=mongodb://mongo-bagel:27017/BagelDB
-#      - SESSION_COOKIE_SECRET= 
-#      - JWT_SECRET=  
-#      - PAT_ENCRYPTION_KEY= 
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo-bagel:27017/BagelDB
+#      - SESSION_COOKIE_SECRET=
+#      - JWT_SECRET=
+#      - PAT_ENCRYPTION_KEY=
     depends_on:
       mongo-bagel:
         condition: service_healthy
@@ -44,7 +42,7 @@ services:
       start_period: 30s
 
   bagel-ui:
-    image: thebagelproject/bagel-ui
+    image: thebagelproject/bagel-ui:latest
     container_name: bagel-ui
     restart: unless-stopped
     ports:
@@ -59,17 +57,35 @@ services:
       - bagel-network
 
   bagel-server:
-    image: thebagelproject/bagel-server
+    image: thebagelproject/bagel-server:latest
     container_name: bagel-server
     restart: unless-stopped
+    stdin_open: true  # Keep container running
+    tty: true         # Keep container running
+    command: tail -f /dev/null  # Keep container alive for docker exec
     depends_on:
       - mongo-bagel
     networks:
       - bagel-network
-    # Add environment variables and ports as needed
+    volumes:
+      - bagel_workspace:/workspace  # Persistent workspace for projects
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket access (if needed)
+    environment:
+      - AWS_REGION=us-east-1
+      - TF_IN_AUTOMATION=true
+      - FORCE_COLOR=0
+    working_dir: /workspace
+    healthcheck:
+      test: ["CMD", "which", "terraform", "&&", "which", "aws", "&&", "which", "git", "&&", "which", "node"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   mongo_data:
+    driver: local
+  bagel_workspace:
     driver: local
 
 networks:
