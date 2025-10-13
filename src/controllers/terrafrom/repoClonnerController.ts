@@ -54,7 +54,7 @@ export const cloneRepoAndCreateSpaces = async (req: Request, res: Response) => {
       );
     }
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }

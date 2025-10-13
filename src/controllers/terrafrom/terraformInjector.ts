@@ -160,7 +160,7 @@ export const terraformInit = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -249,7 +249,7 @@ export const terraformPlan = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -310,7 +310,7 @@ export const terraformApply = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -351,7 +351,7 @@ export const terraformDestroy = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
