@@ -28,7 +28,7 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "A profile already exists. This can only be changed in the project settings" });
     }
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -122,7 +122,7 @@ export const deleteAwsProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No profile set for this project" });
     }
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -185,7 +185,7 @@ export const updateAwsProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
