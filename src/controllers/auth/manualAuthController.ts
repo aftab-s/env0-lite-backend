@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { createUser, getAllUsers, getUserById, updateUser, findByEmail, softDeleteUser, hardDeleteUser } from '../../repositories/user.repository';
@@ -33,6 +33,17 @@ function isValidEmail(email: string): boolean {
   if (forbiddenDomains.includes(domain)) return false;
   if (domain.includes('admin')) return false;
   return true;
+}
+
+function getContainerIdsByImage(imageName: string): string[] {
+  try {
+    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
+    const output = execSync(cmd, { encoding: 'utf8' });
+    return output.split('\n').filter(Boolean);
+  } catch (err) {
+    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
+    return [];
+  }
 }
 
 const ManualAuthController = {
@@ -206,10 +217,11 @@ const ManualAuthController = {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: 'CONTAINERID not set in env' });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     // Get all projects owned by the user
     const projects = await Project.find({ ownerId: user.userId });

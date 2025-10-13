@@ -1,6 +1,6 @@
 // controllers/Docker/terraformInjector.ts
 import { Request, Response } from "express";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import Project from "../../models/project.schema";
 import * as DeploymentRepository from "../../repositories/deployment.reposiory";
 import Deployment from "../../models/deployment.schema";
@@ -10,6 +10,7 @@ type CommandResult = {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+  combined?: string;
   summary: {
     toAdd?: number;
     toChange?: number;
@@ -19,6 +20,20 @@ type CommandResult = {
     destroyed?: number;
   } | null;
 };
+
+/**
+ * Get container IDs by image name
+ */
+function getContainerIdsByImage(imageName: string): string[] {
+  try {
+    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
+    const output = execSync(cmd, { encoding: 'utf8' });
+    return output.split('\n').filter(Boolean);
+  } catch (err) {
+    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
+    return [];
+  }
+}
 
 /**
  * Parse Terraform output into structured summary (init, apply, destroy only)
@@ -77,7 +92,8 @@ const runCommands = (
   return new Promise((resolve, reject) => {
     const safePath = workspacePath.replace(/(["\s'$`\\])/g, "\\$1");
     const fullCmd = commands.join(" && ");
-    const wrappedCmd = `cd ${safePath} && ${fullCmd}`;
+    // Redirect stderr to stdout to preserve output order as seen in the terminal
+    const wrappedCmd = `cd ${safePath} && ${fullCmd} 2>&1`;
 
     const proc = spawn("docker", [
       "exec",
@@ -95,8 +111,8 @@ const runCommands = (
     proc.stdout.setEncoding("utf8");
     proc.stderr.setEncoding("utf8");
 
-    let stdoutBuffer = "";
-    let stderrBuffer = "";
+  let stdoutBuffer = "";
+  let stderrBuffer = "";
 
     proc.stdout.on("data", (data) => {
       stdoutBuffer += data.toString();
@@ -107,10 +123,13 @@ const runCommands = (
     });
 
     proc.on("close", (code) => {
+      // Combine buffers to avoid losing logs that Terraform prints to stderr
+      const combined = `${stdoutBuffer}${stderrBuffer}`;
       resolve({
         exitCode: code,
         stdout: stdoutBuffer,
         stderr: stderrBuffer,
+        combined,
         summary: parseTerraformSummary(stdoutBuffer),
       });
     });
@@ -141,10 +160,11 @@ export const terraformInit = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
     const result = await runCommands(containerId, workspacePath, [
@@ -173,7 +193,7 @@ export const terraformInit = async (req: Request, res: Response) => {
             steps: {
               step: "init",
               stepStatus: result.exitCode === 0 ? "successful" : "failed",
-              message: result.stdout || result.stderr,
+              message: result.combined || result.stdout || result.stderr,
             },
           },
         }
@@ -195,7 +215,7 @@ export const terraformInit = async (req: Request, res: Response) => {
           {
             step: "init",
             stepStatus: result.exitCode === 0 ? "successful" : "failed",
-            message: result.stdout || result.stderr,
+            message: result.combined || result.stdout || result.stderr,
           },
         ],
         startedAt: new Date(),
@@ -229,8 +249,11 @@ export const terraformPlan = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
+    }
+    const containerId = ids[0];
 
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
 
@@ -255,7 +278,7 @@ export const terraformPlan = async (req: Request, res: Response) => {
       deploymentId,
       step: "plan",
       stepStatus: humanReadablePlan.exitCode === 0 ? "successful" : "failed",
-      message: humanReadablePlan.stdout || humanReadablePlan.stderr,
+  message: humanReadablePlan.combined || humanReadablePlan.stdout || humanReadablePlan.stderr,
       structuredData: planJson,
     });
 
@@ -287,8 +310,11 @@ export const terraformApply = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
+    }
+    const containerId = ids[0];
 
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
 
@@ -303,7 +329,7 @@ export const terraformApply = async (req: Request, res: Response) => {
       message: result.stdout || result.stderr,
     });
 
-    res.json({ command: "terraform apply", deploymentId, ...result });
+  res.json({ command: "terraform apply", deploymentId, ...result });
   } catch (err: any) {
     console.error("Terraform apply error:", err);
     res.status(500).json({ error: err.message });
@@ -325,8 +351,11 @@ export const terraformDestroy = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
+    }
+    const containerId = ids[0];
 
     const workspacePath = `/workspace/${project.projectName}/${spaceName}`;
 
@@ -338,10 +367,10 @@ export const terraformDestroy = async (req: Request, res: Response) => {
       deploymentId,
       step: "destroy",
       stepStatus: result.exitCode === 0 ? "successful" : "failed",
-      message: result.stdout || result.stderr,
+      message: result.combined || result.stdout || result.stderr,
     });
 
-    res.json({ command: "terraform destroy", deploymentId, ...result });
+  res.json({ command: "terraform destroy", deploymentId, ...result });
   } catch (err: any) {
     console.error("Terraform destroy error:", err);
     res.status(500).json({ error: err.message });

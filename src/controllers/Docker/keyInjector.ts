@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import Project from "../../models/project.schema";
 
 /**
@@ -13,9 +13,9 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const { profileName, accessKeyId, secretAccessKey, region } = req.body;
 
-    if (!profileName || !accessKeyId || !secretAccessKey) {
+    if (!profileName) {
       return res.status(400).json({
-        error: "profileName, accessKeyId, and secretAccessKey are required",
+        error: "profileName is required",
       });
     }
 
@@ -28,10 +28,11 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "A profile already exists. This can only be changed in the project settings" });
     }
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     const runAwsCmd = (args: string[]) =>
       new Promise<void>((resolve, reject) => {
@@ -44,23 +45,27 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
         });
       });
 
-    // Configure AWS credentials in container
-    await runAwsCmd([
-      "configure",
-      "set",
-      "aws_access_key_id",
-      accessKeyId,
-      "--profile",
-      profileName,
-    ]);
-    await runAwsCmd([
-      "configure",
-      "set",
-      "aws_secret_access_key",
-      secretAccessKey,
-      "--profile",
-      profileName,
-    ]);
+    // Configure AWS credentials in container (conditionally based on provided fields)
+    if (accessKeyId) {
+      await runAwsCmd([
+        "configure",
+        "set",
+        "aws_access_key_id",
+        accessKeyId,
+        "--profile",
+        profileName,
+      ]);
+    }
+    if (secretAccessKey) {
+      await runAwsCmd([
+        "configure",
+        "set",
+        "aws_secret_access_key",
+        secretAccessKey,
+        "--profile",
+        profileName,
+      ]);
+    }
     await runAwsCmd([
       "configure",
       "set",
@@ -117,10 +122,11 @@ export const deleteAwsProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No profile set for this project" });
     }
 
-    const containerId = process.env.CONTAINERID;
-    if (!containerId) {
-      return res.status(500).json({ error: "CONTAINERID not set" });
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
     }
+    const containerId = ids[0];
 
     const profileName = project.profile;
 
@@ -158,3 +164,86 @@ export const deleteAwsProfile = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+/**
+ * PUT /projects/:projectId/profile/update
+ * Updates the AWS credentials for the existing profile in both Mongo and the container
+ */
+export const updateAwsProfile = async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { profileName, accessKeyId, secretAccessKey, region } = req.body;
+
+    // Simple contract: all fields are required to change profile
+    if (!profileName || !accessKeyId || !secretAccessKey || !region) {
+      return res.status(400).json({ error: "profileName, accessKeyId, secretAccessKey, and region are required" });
+    }
+
+    const project = await Project.findOne({ projectId });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    if (ids.length === 0) {
+      return res.status(500).json({ error: 'No containers found for the image' });
+    }
+    const containerId = ids[0];
+
+    const runAwsCmd = (args: string[]) =>
+      new Promise<void>((resolve, reject) => {
+        const proc = spawn("docker", ["exec", containerId, "aws", ...args]);
+        let error = "";
+        proc.stderr.on("data", (d) => (error += d.toString()));
+        proc.on("close", (code) => {
+          if (code === 0) resolve();
+          else reject(new Error(error || `Command failed with code ${code}`));
+        });
+      });
+
+    // If an old profile exists, remove it from container configs first
+    const oldProfileName = project.profile;
+    if (oldProfileName) {
+      const runDockerCmd = (cmd: string) =>
+        new Promise<void>((resolve, reject) => {
+          const proc = spawn("docker", ["exec", containerId, "sh", "-c", cmd]);
+          let error = "";
+          proc.stderr.on("data", (d) => (error += d.toString()));
+          proc.on("close", (code) => (code === 0 ? resolve() : reject(new Error(error || `Command failed with code ${code}`))));
+        });
+
+      await runDockerCmd(`sed -i '/\\[profile ${oldProfileName}\\]/,/^$/d' /root/.aws/config || true`);
+      await runDockerCmd(`sed -i '/\\[${oldProfileName}\\]/,/^$/d' /root/.aws/credentials || true`);
+    }
+
+    // Configure new profile credentials in container
+    await runAwsCmd(["configure", "set", "aws_access_key_id", accessKeyId, "--profile", profileName]);
+    await runAwsCmd(["configure", "set", "aws_secret_access_key", secretAccessKey, "--profile", profileName]);
+    await runAwsCmd(["configure", "set", "region", region, "--profile", profileName]);
+    await runAwsCmd(["configure", "set", "output", "json", "--profile", profileName]);
+
+    // Update DB profile name
+    project.profile = profileName;
+    await project.save();
+
+    res.json({
+      success: true,
+      message: `Profile set to '${profileName}' and credentials updated`,
+      profile: profileName,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+function getContainerIdsByImage(imageName: string): string[] {
+  try {
+    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
+    const output = execSync(cmd, { encoding: 'utf8' });
+    return output.split('\n').filter(Boolean);
+  } catch (err) {
+    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
+    return [];
+  }
+}
