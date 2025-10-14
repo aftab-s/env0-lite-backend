@@ -216,8 +216,11 @@ const ManualAuthController = {
   async hardDeleteUser(req: Request, res: Response) {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }

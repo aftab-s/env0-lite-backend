@@ -27,8 +27,11 @@ export const configureAwsProfile = async (req: Request, res: Response) => {
     if (project.profile) {
       return res.status(400).json({ error: "A profile already exists. This can only be changed in the project settings" });
     }
-
-    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -122,7 +125,11 @@ export const deleteAwsProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No profile set for this project" });
     }
 
-    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -185,7 +192,11 @@ export const updateAwsProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const ids = getContainerIdsByImage('thebagelproject/bagel-server:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
