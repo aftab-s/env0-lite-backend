@@ -26,9 +26,10 @@ services:
       - NODE_ENV=production
       - PORT=5000
       - MONGO_URI=mongodb://mongo-bagel:27017/BagelDB
-#      - SESSION_COOKIE_SECRET=
-#      - JWT_SECRET=
-#      - PAT_ENCRYPTION_KEY=
+      - SESSION_COOKIE_SECRET=
+      - JWT_SECRET= 
+      - PAT_ENCRYPTION_KEY= 
+      - DOCKER_IMAGE_NAME=thebagelproject/bagel-backend:latest
     depends_on:
       mongo-bagel:
         condition: service_healthy
