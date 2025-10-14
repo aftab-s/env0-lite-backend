@@ -160,7 +160,11 @@ export const terraformInit = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -249,7 +253,11 @@ export const terraformPlan = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -310,7 +318,11 @@ export const terraformApply = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
@@ -351,7 +363,11 @@ export const terraformDestroy = async (req: Request, res: Response) => {
     const project = await Project.findOne({ projectId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const ids = getContainerIdsByImage('aftab2010/arc-backend:latest');
+    const image_name = process.env.DOCKER_IMAGE_NAME;
+    if (!image_name) {
+      return res.status(500).json({ error: 'DOCKER_IMAGE_NAME environment variable is not set' });
+    }
+    const ids = getContainerIdsByImage(image_name);
     if (ids.length === 0) {
       return res.status(500).json({ error: 'No containers found for the image' });
     }
