@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Project from "../../models/project.schema";
 import { spawn, execSync } from "child_process";
+import { getContainerIdsByImage } from "../../utils/dockerUtils";
 
 /**
  * DELETE /projects/:projectId
@@ -76,19 +77,3 @@ export const deleteProject = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
-/**
- * Get container IDs by image name
- * @param imageName - Name of the image to filter containers
- * @returns Array of container IDs
- */
-function getContainerIdsByImage(imageName: string): string[] {
-  try {
-    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
-    const output = execSync(cmd, { encoding: 'utf8' });
-    return output.split('\n').filter(Boolean);
-  } catch (err) {
-    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
-    return [];
-  }
-}

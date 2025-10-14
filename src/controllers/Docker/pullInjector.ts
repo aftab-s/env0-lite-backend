@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { spawn, execSync } from "child_process";
 import { v4 as uuidv4 } from "uuid";
 import Project from "../../models/project.schema";
+import { getContainerIdsByImage } from "../../utils/dockerUtils";
 
 /**
  * PUT /projects/:projectId/reset
@@ -101,19 +102,3 @@ export const resetRepoAndSyncSpaces = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-/**
- * Get container IDs by image name
- * @param imageName - The name of the image to filter containers by
- * @returns An array of container IDs
- */
-function getContainerIdsByImage(imageName: string): string[] {
-  try {
-    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
-    const output = execSync(cmd, { encoding: 'utf8' });
-    return output.split('\n').filter(Boolean);
-  } catch (err) {
-    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
-    return [];
-  }
-}
