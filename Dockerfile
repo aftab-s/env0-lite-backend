@@ -1,6 +1,9 @@
 # Use official Node.js LTS image
 FROM node:20-alpine
 
+# Install Docker CLI
+RUN apk add --no-cache docker-cli
+
 # Create app directory with proper permissions
 WORKDIR /usr/src/app
 
