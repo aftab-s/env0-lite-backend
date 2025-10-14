@@ -4,19 +4,9 @@ import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 
 import Project from "../../models/project.schema"; 
+import { getContainerIdsByImage } from "../../utils/dockerUtils";
 
 dotenv.config();
-
-function getContainerIdsByImage(imageName: string): string[] {
-  try {
-    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
-    const output = execSync(cmd, { encoding: 'utf8' });
-    return output.split('\n').filter(Boolean);
-  } catch (err) {
-    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
-    return [];
-  }
-}
 
 /**
  * POST /projects/:projectId/inject-to-container

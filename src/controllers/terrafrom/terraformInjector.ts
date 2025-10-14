@@ -5,6 +5,7 @@ import Project from "../../models/project.schema";
 import * as DeploymentRepository from "../../repositories/deployment.reposiory";
 import Deployment from "../../models/deployment.schema";
 import { generateDeploymentIdentifiers } from "../../utils/deploymentIDGenerator";
+import { getContainerIdsByImage } from "../../utils/dockerUtils";
 
 type CommandResult = {
   exitCode: number | null;
@@ -20,20 +21,6 @@ type CommandResult = {
     destroyed?: number;
   } | null;
 };
-
-/**
- * Get container IDs by image name
- */
-function getContainerIdsByImage(imageName: string): string[] {
-  try {
-    const cmd = `docker ps -q --filter "ancestor=${imageName}"`;
-    const output = execSync(cmd, { encoding: 'utf8' });
-    return output.split('\n').filter(Boolean);
-  } catch (err) {
-    console.error(`Failed to get containers for image "${imageName}":`, (err as Error).message);
-    return [];
-  }
-}
 
 /**
  * Parse Terraform output into structured summary (init, apply, destroy only)
